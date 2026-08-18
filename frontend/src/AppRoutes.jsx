@@ -15,20 +15,68 @@ import DiseasePrediction from "./pages/DiseasePrediction";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 
+import AdminDashboard from "./pages/AdminDashboard";
+
 
 /* ==========================================================================
    PROTECTED ROUTE
    ========================================================================== */
 
 function ProtectedRoute({ children }) {
-    const token = localStorage.getItem(
-        "access_token"
-    );
+    const token = localStorage.getItem("access_token");
 
     if (!token) {
         return (
             <Navigate
                 to="/login"
+                replace
+            />
+        );
+    }
+
+    return children;
+}
+
+
+/* ==========================================================================
+   ADMIN ROUTE
+   ========================================================================== */
+
+function AdminRoute({ children }) {
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+        return (
+            <Navigate
+                to="/login"
+                replace
+            />
+        );
+    }
+
+    /*
+     * The backend remains the authoritative security layer.
+     *
+     * We also check the locally stored user object here so that
+     * ordinary farmers do not even enter the admin interface.
+     */
+
+    let user = null;
+
+    try {
+        const storedUser = localStorage.getItem("user");
+
+        if (storedUser) {
+            user = JSON.parse(storedUser);
+        }
+    } catch {
+        user = null;
+    }
+
+    if (!user || user.role !== "admin") {
+        return (
+            <Navigate
+                to="/dashboard"
                 replace
             />
         );
@@ -57,7 +105,7 @@ export default function AppRoutes() {
 
 
             {/* ==================================================================
-                COMMAND
+                FARMER COMMAND CENTER
             ================================================================== */}
 
             <Route
@@ -82,10 +130,6 @@ export default function AppRoutes() {
                     </ProtectedRoute>
                 }
             />
-
-            {/* ------------------------------------------------------------------
-                ANIMAL REGISTRATION
-            ------------------------------------------------------------------ */}
 
             <Route
                 path="/animals/register"
@@ -189,6 +233,20 @@ export default function AppRoutes() {
                     <ProtectedRoute>
                         <Settings />
                     </ProtectedRoute>
+                }
+            />
+
+
+            {/* ==================================================================
+                ADMIN CONTROL ROOM
+            ================================================================== */}
+
+            <Route
+                path="/admin"
+                element={
+                    <AdminRoute>
+                        <AdminDashboard />
+                    </AdminRoute>
                 }
             />
 

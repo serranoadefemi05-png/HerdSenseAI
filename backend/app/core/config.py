@@ -9,9 +9,7 @@ class Settings(BaseSettings):
     # ============================================================
 
     APP_NAME: str = "HerdSense AI"
-
     APP_ENV: str = "development"
-
     DEBUG: bool = False
 
     # ============================================================
@@ -25,25 +23,24 @@ class Settings(BaseSettings):
     # ============================================================
 
     JWT_SECRET_KEY: str
-
     JWT_ALGORITHM: str = "HS256"
-
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # ============================================================
-    # ADMIN ACCOUNT
+    # ADMIN ACCOUNTS
     # ============================================================
 
     ADMIN_EMAIL: str
-
     ADMIN_PASSWORD: str
+
+    ADMIN_EMAIL_2: str
+    ADMIN_PASSWORD_2: str
 
     # ============================================================
     # CORS / FRONTEND
     # ============================================================
 
     CORS_ORIGINS: str = "http://localhost:5173"
-
     FRONTEND_URL: str = "http://localhost:5173"
 
     # ============================================================
@@ -51,11 +48,8 @@ class Settings(BaseSettings):
     # ============================================================
 
     BASE_RPC_URL: str = ""
-
     BASE_CHAIN_ID: int = 84532
-
     BASE_CONTRACT_ADDRESS: str = ""
-
     BASE_NETWORK: str = "base-sepolia"
 
     # ============================================================

@@ -13,6 +13,7 @@ from app.routers.websocket import router as websocket_router
 from app.routers.intelligence import router as intelligence_router
 from app.routers.disease_risk import router as disease_risk_router
 from app.routers.base import router as base_router
+from app.routers.admin import router as admin_router
 
 
 # =============================================================================
@@ -50,26 +51,28 @@ app.add_middleware(
 # ROUTERS
 # =============================================================================
 
+# Authentication
 app.include_router(auth_router)
 
+# Farmer / Core application
 app.include_router(farm_router)
-
 app.include_router(animal_router)
-
 app.include_router(telemetry_router)
-
 app.include_router(dashboard_router)
-
 app.include_router(alert_router)
 
+# Real-time communication
 app.include_router(websocket_router)
 
+# AI / Intelligence
 app.include_router(intelligence_router)
-
 app.include_router(disease_risk_router)
 
 # Base blockchain integration
 app.include_router(base_router)
+
+# Administration / Control Room
+app.include_router(admin_router)
 
 
 # =============================================================================
