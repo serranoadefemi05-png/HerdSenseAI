@@ -1,0 +1,161 @@
+/* =========================================
+   HERDSENSE AI GLOBAL APP THEME
+========================================= */
+
+:root {
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    color-scheme: dark;
+
+    --bg: #05070a;
+    --bg-secondary: #0a0d12;
+    --surface: #0d1117;
+    --surface-hover: #11161e;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.15);
+
+    --text: #f5f7fa;
+    --text-secondary: #a8b0bd;
+    --text-muted: #697384;
+
+    --accent: #ffffff;
+    --accent-text: #05070a;
+
+    --green: #35d07f;
+    --orange: #ffae42;
+    --red: #ff5c5c;
+    --blue: #4da3ff;
+
+    --shadow:
+        0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="light"] {
+    color-scheme: light;
+
+    --bg: #f5f7fa;
+    --bg-secondary: #ffffff;
+    --surface: #ffffff;
+    --surface-hover: #f0f2f5;
+
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.14);
+
+    --text: #111318;
+    --text-secondary: #5f6875;
+    --text-muted: #89919d;
+
+    --accent: #111318;
+    --accent-text: #ffffff;
+
+    --green: #159957;
+    --orange: #d98400;
+    --red: #d93434;
+    --blue: #1976d2;
+
+    --shadow:
+        0 20px 60px rgba(0, 0, 0, 0.08);
+}
+
+/* =========================================
+   RESET
+========================================= */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+}
+
+html {
+    background: var(--bg);
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    transition:
+        background-color 0.25s ease,
+        color 0.25s ease;
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* =========================================
+   APP SHELL
+========================================= */
+
+.app-shell {
+    min-height: 100vh;
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+
+    transition:
+        background-color 0.25s ease,
+        color 0.25s ease;
+}
+
+/* =========================================
+   SMOOTH THEME TRANSITION
+========================================= */
+
+.app-shell *,
+.app-shell {
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+/* =========================================
+   SCROLLBAR
+========================================= */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}

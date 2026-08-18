@@ -1,0 +1,1439 @@
+/* ==========================================================================
+   HERDSENSE AI — ANIMALS
+   Global enterprise command-center interface
+   ========================================================================== */
+
+.animals-page {
+    width: 100%;
+    min-height: 100%;
+    padding: 42px 48px 64px;
+    color: #f5f7fa;
+    background:
+        radial-gradient(
+            circle at 80% 0%,
+            rgba(255, 255, 255, 0.025),
+            transparent 30%
+        ),
+        #080b0f;
+    box-sizing: border-box;
+}
+
+/* ==========================================================================
+   HEADER
+   ========================================================================== */
+
+.animals-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 32px;
+    margin-bottom: 34px;
+}
+
+.animals-heading {
+    min-width: 0;
+}
+
+.animals-eyebrow {
+    margin-bottom: 10px;
+    color: #737c88;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    line-height: 1.4;
+}
+
+.animals-title-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.animals-title-row h1 {
+    margin: 0;
+    color: #f7f8fa;
+    font-size: 34px;
+    font-weight: 650;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+}
+
+.animals-count-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 0 10px;
+    border: 1px solid #242a32;
+    border-radius: 999px;
+    background: #0e1217;
+    color: #8f98a4;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.animals-heading p {
+    max-width: 620px;
+    margin: 12px 0 0;
+    color: #7f8996;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.animals-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   API STATUS
+   ========================================================================== */
+
+.animals-api-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #20262d;
+    border-radius: 7px;
+    background: #0d1115;
+    color: #8d97a3;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.animals-api-status span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #69727d;
+}
+
+.animals-api-status.online span {
+    background: #43d17b;
+    box-shadow: 0 0 0 3px rgba(67, 209, 123, 0.08);
+}
+
+.animals-api-status.offline span {
+    background: #e45d65;
+}
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+
+.animals-secondary-button,
+.animals-register-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+        background 160ms ease,
+        border-color 160ms ease,
+        transform 160ms ease,
+        opacity 160ms ease;
+}
+
+.animals-secondary-button {
+    border: 1px solid #272d35;
+    background: #0e1217;
+    color: #d2d7dd;
+}
+
+.animals-secondary-button:hover {
+    background: #151a20;
+    border-color: #353c45;
+}
+
+.animals-secondary-button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.refresh-icon {
+    font-size: 15px;
+    line-height: 1;
+}
+
+.animals-register-button {
+    border: 1px solid #e8ebef;
+    background: #f2f4f6;
+    color: #0a0c0f;
+}
+
+.animals-register-button:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+}
+
+.animals-register-button span {
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+/* ==========================================================================
+   ERROR
+   ========================================================================== */
+
+.animals-error {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+    padding: 13px 16px;
+    border: 1px solid rgba(224, 91, 100, 0.24);
+    border-radius: 9px;
+    background: rgba(224, 91, 100, 0.055);
+}
+
+.animals-error-icon {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(224, 91, 100, 0.12);
+    color: #ef7279;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.animals-error div:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.animals-error strong {
+    color: #e8eaed;
+    font-size: 11px;
+}
+
+.animals-error span {
+    color: #87909c;
+    font-size: 11px;
+}
+
+/* ==========================================================================
+   SUMMARY
+   ========================================================================== */
+
+.animals-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.animals-summary-card {
+    position: relative;
+    min-height: 132px;
+    padding: 17px 18px;
+    overflow: hidden;
+    border: 1px solid #1d232a;
+    border-radius: 10px;
+    background: #0c1014;
+    box-sizing: border-box;
+}
+
+.animals-summary-card::after {
+    position: absolute;
+    right: -35px;
+    bottom: -50px;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.018);
+    content: "";
+}
+
+.summary-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.summary-card-top > span:first-child {
+    color: #69727e;
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.16em;
+}
+
+.summary-card-index {
+    color: #3d454e;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.summary-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #606974;
+}
+
+.animals-summary-card.healthy .summary-status-dot {
+    background: #43d17b;
+}
+
+.animals-summary-card.warning .summary-status-dot {
+    background: #e5ae50;
+}
+
+.animals-summary-card.critical .summary-status-dot {
+    background: #e25c65;
+}
+
+.animals-summary-card strong {
+    display: block;
+    margin-top: 17px;
+    color: #f4f6f8;
+    font-size: 31px;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+}
+
+.animals-summary-card small {
+    display: block;
+    margin-top: 4px;
+    color: #69737e;
+    font-size: 10px;
+}
+
+.animals-summary-card.healthy {
+    border-color: rgba(67, 209, 123, 0.13);
+}
+
+.animals-summary-card.warning {
+    border-color: rgba(229, 174, 80, 0.13);
+}
+
+.animals-summary-card.critical {
+    border-color: rgba(226, 92, 101, 0.16);
+}
+
+/* ==========================================================================
+   MAIN PANEL
+   ========================================================================== */
+
+.animals-panel {
+    overflow: hidden;
+    border: 1px solid #1c2229;
+    border-radius: 11px;
+    background: #0b0f13;
+    box-shadow:
+        0 18px 50px rgba(0, 0, 0, 0.18);
+}
+
+.animals-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 22px 22px 19px;
+    border-bottom: 1px solid #181e24;
+}
+
+.animals-panel-header h2 {
+    margin: 0;
+    color: #edf0f3;
+    font-size: 17px;
+    font-weight: 620;
+    letter-spacing: -0.02em;
+}
+
+.animals-panel-header p {
+    margin: 6px 0 0;
+    color: #69737e;
+    font-size: 11px;
+}
+
+.animals-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 25px;
+    padding: 0 9px;
+    border: 1px solid rgba(67, 209, 123, 0.15);
+    border-radius: 5px;
+    color: #7b8790;
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+}
+
+.animals-live-badge span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #43d17b;
+    box-shadow: 0 0 0 3px rgba(67, 209, 123, 0.07);
+}
+
+/* ==========================================================================
+   TOOLBAR
+   ========================================================================== */
+
+.animals-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #181e24;
+}
+
+.animals-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: min(390px, 100%);
+    height: 34px;
+    border: 1px solid #222930;
+    border-radius: 7px;
+    background: #090d11;
+}
+
+.animals-search:focus-within {
+    border-color: #39424c;
+}
+
+.animals-search-icon {
+    margin: 0 8px 0 11px;
+    color: #68727d;
+    font-size: 17px;
+}
+
+.animals-search input {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: #dce0e4;
+    font-family: inherit;
+    font-size: 11px;
+}
+
+.animals-search input::placeholder {
+    color: #4e5761;
+}
+
+.animals-search-clear {
+    width: 25px;
+    height: 25px;
+    margin-right: 4px;
+    border: 0;
+    background: transparent;
+    color: #727b85;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.animals-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.animals-filter {
+    height: 34px;
+    padding: 0 30px 0 10px;
+    border: 1px solid #222930;
+    border-radius: 7px;
+    outline: none;
+    background: #090d11;
+    color: #bfc5cb;
+    font-family: inherit;
+    font-size: 10px;
+}
+
+.animals-result-count {
+    color: #59636e;
+    font-size: 10px;
+}
+
+/* ==========================================================================
+   TABLE
+   ========================================================================== */
+
+.animals-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.animals-table {
+    width: 100%;
+    min-width: 1080px;
+    border-collapse: collapse;
+}
+
+.animals-table th {
+    height: 39px;
+    padding: 0 15px;
+    border-bottom: 1px solid #181e24;
+    background: #090d11;
+    color: #535d68;
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.13em;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.animals-table td {
+    height: 70px;
+    padding: 0 15px;
+    border-bottom: 1px solid #161c22;
+    color: #aeb5bd;
+    font-size: 11px;
+}
+
+.animal-row {
+    cursor: pointer;
+    transition:
+        background 140ms ease,
+        box-shadow 140ms ease;
+}
+
+.animal-row:hover {
+    background: rgba(255, 255, 255, 0.018);
+}
+
+.animal-row.critical-row {
+    box-shadow:
+        inset 2px 0 0 #d75c65;
+}
+
+.animal-identity {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.animal-avatar {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    place-items: center;
+    border: 1px solid #293039;
+    border-radius: 8px;
+    background: #11161b;
+    color: #c8cdd2;
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.animal-avatar.healthy {
+    border-color: rgba(67, 209, 123, 0.18);
+}
+
+.animal-avatar.warning {
+    border-color: rgba(229, 174, 80, 0.22);
+}
+
+.animal-avatar.critical {
+    border-color: rgba(226, 92, 101, 0.25);
+}
+
+.animal-identity-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.animal-identity-copy strong {
+    color: #e3e6e9;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.animal-identity-copy span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #626c77;
+    font-size: 9px;
+}
+
+.animal-identity-copy i {
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: #414952;
+}
+
+/* ==========================================================================
+   METRICS
+   ========================================================================== */
+
+.metric {
+    color: #c7ccd1;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.metric small {
+    margin-left: 3px;
+    color: #5e6873;
+    font-size: 8px;
+    font-weight: 500;
+}
+
+.metric-warning {
+    color: #e4b75f;
+}
+
+.metric-critical {
+    color: #eb6b72;
+}
+
+.metric-normal {
+    color: #c7ccd1;
+}
+
+/* ==========================================================================
+   BATTERY
+   ========================================================================== */
+
+.battery-cell {
+    width: 82px;
+}
+
+.battery-value {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    margin-bottom: 6px;
+}
+
+.battery-value span {
+    color: #c7ccd1;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.battery-value small {
+    color: #5d6771;
+    font-size: 8px;
+}
+
+.battery-track {
+    width: 100%;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #222930;
+}
+
+.battery-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: #69737d;
+}
+
+.battery-fill.warning {
+    background: #c79c4b;
+}
+
+.battery-fill.critical {
+    background: #d75c65;
+}
+
+/* ==========================================================================
+   GPS
+   ========================================================================== */
+
+.gps-value {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #737d88;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 9px;
+    white-space: nowrap;
+}
+
+.gps-value > span {
+    width: 5px;
+    height: 5px;
+    flex: 0 0 5px;
+    border-radius: 50%;
+    background: #4d555e;
+}
+
+.gps-value > span.gps-active {
+    background: #43d17b;
+}
+
+/* ==========================================================================
+   STATUS
+   ========================================================================== */
+
+.animal-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 25px;
+    padding: 0 8px;
+    border: 1px solid #262d34;
+    border-radius: 5px;
+    font-size: 9px;
+    font-weight: 650;
+}
+
+.animal-status-icon {
+    display: grid;
+    width: 14px;
+    height: 14px;
+    place-items: center;
+    border-radius: 50%;
+    font-size: 8px;
+    font-weight: 800;
+}
+
+.animal-status-healthy {
+    border-color: rgba(67, 209, 123, 0.14);
+    background: rgba(67, 209, 123, 0.045);
+    color: #72cf97;
+}
+
+.animal-status-healthy .animal-status-icon {
+    background: rgba(67, 209, 123, 0.12);
+    color: #58c985;
+}
+
+.animal-status-warning {
+    border-color: rgba(229, 174, 80, 0.15);
+    background: rgba(229, 174, 80, 0.045);
+    color: #d7aa59;
+}
+
+.animal-status-warning .animal-status-icon {
+    background: rgba(229, 174, 80, 0.12);
+    color: #d7aa59;
+}
+
+.animal-status-critical {
+    border-color: rgba(226, 92, 101, 0.18);
+    background: rgba(226, 92, 101, 0.05);
+    color: #e16a71;
+}
+
+.animal-status-critical .animal-status-icon {
+    background: rgba(226, 92, 101, 0.12);
+    color: #e16a71;
+}
+
+/* ==========================================================================
+   LAST SIGNAL
+   ========================================================================== */
+
+.last-signal {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.last-signal strong {
+    color: #8c959f;
+    font-size: 9px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.last-signal span {
+    color: #4f5964;
+    font-size: 8px;
+}
+
+/* ==========================================================================
+   EMPTY STATE
+   ========================================================================== */
+
+.animals-empty {
+    height: 250px !important;
+}
+
+.animals-empty-content {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 7px;
+}
+
+.animals-empty-icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    margin-bottom: 6px;
+    place-items: center;
+    border: 1px solid #222930;
+    border-radius: 9px;
+    color: #59636e;
+}
+
+.animals-empty-content strong {
+    color: #aeb5bd;
+    font-size: 11px;
+}
+
+.animals-empty-content span {
+    color: #59636e;
+    font-size: 10px;
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+
+.animals-panel-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 18px;
+    color: #555f69;
+    font-size: 9px;
+}
+
+.animals-panel-footer strong {
+    color: #8a939d;
+}
+
+.animals-footer-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.animals-footer-live i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #43d17b;
+}
+
+/* ==========================================================================
+   PROFILE MODAL
+   ========================================================================== */
+
+.animal-modal-backdrop,
+.animal-delete-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(2, 4, 6, 0.78);
+    backdrop-filter: blur(9px);
+    -webkit-backdrop-filter: blur(9px);
+}
+
+.animal-modal {
+    width: min(540px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    border: 1px solid #293039;
+    border-radius: 13px;
+    background:
+        linear-gradient(
+            180deg,
+            #10151a 0%,
+            #0b0f13 100%
+        );
+    box-shadow:
+        0 30px 100px rgba(0, 0, 0, 0.55);
+}
+
+.animal-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 24px 24px 20px;
+    border-bottom: 1px solid #1d232a;
+}
+
+.animal-modal-header h2 {
+    margin: 0;
+    color: #f0f2f4;
+    font-size: 24px;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+}
+
+.animal-modal-header > div > span:last-child {
+    display: block;
+    margin-top: 5px;
+    color: #626c77;
+    font-size: 10px;
+}
+
+.animal-modal-close {
+    display: grid;
+    width: 31px;
+    height: 31px;
+    place-items: center;
+    border: 1px solid #272e36;
+    border-radius: 7px;
+    background: #11161b;
+    color: #89929d;
+    cursor: pointer;
+    font-size: 19px;
+    line-height: 1;
+}
+
+.animal-modal-close:hover {
+    border-color: #39414a;
+    background: #171c21;
+    color: #e2e5e8;
+}
+
+.animal-modal-status {
+    padding: 18px 24px 0;
+}
+
+.animal-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 16px 24px;
+}
+
+.animal-detail-grid > div {
+    min-height: 72px;
+    padding: 13px;
+    border: 1px solid #1f262d;
+    border-radius: 8px;
+    background: #0c1115;
+}
+
+.animal-detail-grid span,
+.animal-location > span,
+.animal-signal > span {
+    display: block;
+    margin-bottom: 8px;
+    color: #59636e;
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+}
+
+.animal-detail-grid strong {
+    color: #dfe3e7;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.animal-location,
+.animal-signal {
+    margin: 0 24px 10px;
+    padding: 14px;
+    border: 1px solid #1f262d;
+    border-radius: 8px;
+    background: #0c1115;
+}
+
+.animal-location strong,
+.animal-signal strong {
+    color: #aab2ba;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.animal-intelligence-action {
+    padding: 14px 24px 20px;
+}
+
+.animal-intelligence-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 43px;
+    padding: 0 14px;
+    border: 1px solid #2b333c;
+    border-radius: 8px;
+    background: #151a20;
+    color: #d9dde1;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+        background 150ms ease,
+        border-color 150ms ease;
+}
+
+.animal-intelligence-button:hover {
+    border-color: #3a444f;
+    background: #1b2127;
+}
+
+.animal-intelligence-button span {
+    color: #7c8792;
+    font-size: 17px;
+}
+
+/* ==========================================================================
+   DANGER ZONE
+   ========================================================================== */
+
+.animal-danger-zone {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin: 0 24px 24px;
+    padding: 15px;
+    border: 1px solid rgba(218, 82, 92, 0.16);
+    border-radius: 9px;
+    background: rgba(218, 82, 92, 0.025);
+}
+
+.animal-danger-copy {
+    min-width: 0;
+}
+
+.animal-danger-copy > span {
+    display: block;
+    margin-bottom: 5px;
+    color: #735359;
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+}
+
+.animal-danger-copy strong {
+    display: block;
+    color: #c7cbd0;
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.animal-danger-copy p {
+    max-width: 300px;
+    margin: 4px 0 0;
+    color: #626b75;
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.animal-delete-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    height: 34px;
+    padding: 0 11px;
+    border: 1px solid rgba(218, 82, 92, 0.22);
+    border-radius: 7px;
+    background: rgba(218, 82, 92, 0.045);
+    color: #b96970;
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+        background 150ms ease,
+        border-color 150ms ease,
+        color 150ms ease;
+}
+
+.animal-delete-button:hover {
+    border-color: rgba(225, 92, 101, 0.42);
+    background: rgba(225, 92, 101, 0.1);
+    color: #eb737a;
+}
+
+.animal-delete-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.delete-button-icon {
+    display: grid;
+    width: 15px;
+    height: 15px;
+    place-items: center;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font-size: 10px;
+    line-height: 1;
+}
+
+/* ==========================================================================
+   DELETE CONFIRMATION DIALOG
+   ========================================================================== */
+
+.animal-delete-dialog {
+    width: min(430px, 100%);
+    overflow: hidden;
+    border: 1px solid #323940;
+    border-radius: 13px;
+    background:
+        linear-gradient(
+            180deg,
+            #12171c 0%,
+            #0c1014 100%
+        );
+    box-shadow:
+        0 35px 110px rgba(0, 0, 0, 0.65);
+    animation: deleteDialogIn 150ms ease-out;
+}
+
+@keyframes deleteDialogIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.delete-dialog-icon {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    margin: 25px 25px 17px;
+    place-items: center;
+    border: 1px solid rgba(226, 92, 101, 0.22);
+    border-radius: 11px;
+    background: rgba(226, 92, 101, 0.07);
+    color: #e06a72;
+    font-size: 23px;
+    font-weight: 300;
+}
+
+.delete-dialog-content {
+    padding: 0 25px 25px;
+}
+
+.delete-dialog-eyebrow {
+    display: block;
+    margin-bottom: 8px;
+    color: #8a555c;
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.15em;
+}
+
+.delete-dialog-content h3 {
+    margin: 0;
+    color: #f0f2f4;
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.025em;
+}
+
+.delete-dialog-content > p {
+    margin: 9px 0 16px;
+    color: #7e8893;
+    font-size: 11px;
+    line-height: 1.65;
+}
+
+.delete-dialog-content > p strong {
+    color: #cfd4d9;
+    font-weight: 650;
+}
+
+.delete-target-card {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px;
+    border: 1px solid #252c33;
+    border-radius: 8px;
+    background: #0a0e12;
+}
+
+.delete-target-avatar {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    place-items: center;
+    border: 1px solid #343c45;
+    border-radius: 8px;
+    background: #14191f;
+    color: #c6cbd0;
+    font-size: 10px;
+    font-weight: 750;
+}
+
+.delete-target-card > div:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.delete-target-card strong {
+    color: #d9dde1;
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.delete-target-card span {
+    color: #5f6974;
+    font-size: 9px;
+}
+
+.delete-warning {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 12px;
+    padding: 9px 10px;
+    border: 1px solid rgba(226, 174, 80, 0.12);
+    border-radius: 7px;
+    background: rgba(226, 174, 80, 0.035);
+}
+
+.delete-warning > span {
+    display: grid;
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(226, 174, 80, 0.1);
+    color: #cfa357;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.delete-warning p {
+    margin: 0;
+    color: #8e826a;
+    font-size: 9px;
+}
+
+.delete-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 9px 10px;
+    border: 1px solid rgba(226, 92, 101, 0.18);
+    border-radius: 7px;
+    background: rgba(226, 92, 101, 0.04);
+}
+
+.delete-error > span {
+    color: #e16a71;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.delete-error p {
+    margin: 0;
+    color: #a56c72;
+    font-size: 9px;
+    line-height: 1.4;
+}
+
+.delete-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.delete-cancel-button,
+.delete-confirm-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 37px;
+    padding: 0 14px;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+        background 150ms ease,
+        border-color 150ms ease,
+        opacity 150ms ease;
+}
+
+.delete-cancel-button {
+    border: 1px solid #2b323a;
+    background: #11161b;
+    color: #a1a9b1;
+}
+
+.delete-cancel-button:hover {
+    border-color: #39424b;
+    background: #171c21;
+    color: #d2d6da;
+}
+
+.delete-confirm-button {
+    min-width: 128px;
+    border: 1px solid #b84d57;
+    background: #c95761;
+    color: #ffffff;
+}
+
+.delete-confirm-button:hover {
+    border-color: #d5636c;
+    background: #d15b65;
+}
+
+.delete-confirm-button:disabled,
+.delete-cancel-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.delete-confirm-button > span:first-child {
+    font-size: 14px;
+    font-weight: 300;
+}
+
+.delete-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: deleteSpin 650ms linear infinite;
+}
+
+@keyframes deleteSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==========================================================================
+   LOADING
+   ========================================================================== */
+
+.animals-loading {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 7px;
+    color: #6f7984;
+}
+
+.animals-loading-mark {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    margin-bottom: 8px;
+    place-items: center;
+    border: 1px solid #2b323a;
+    border-radius: 10px;
+    background: #11161b;
+    color: #d7dbe0;
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.animals-loading strong {
+    color: #cdd2d7;
+    font-size: 11px;
+}
+
+.animals-loading span {
+    color: #626c76;
+    font-size: 10px;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 1100px) {
+    .animals-page {
+        padding: 32px 28px 50px;
+    }
+
+    .animals-header {
+        flex-direction: column;
+    }
+
+    .animals-header-actions {
+        width: 100%;
+    }
+
+    .animals-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 720px) {
+    .animals-page {
+        padding: 24px 16px 40px;
+    }
+
+    .animals-title-row h1 {
+        font-size: 28px;
+    }
+
+    .animals-header-actions {
+        flex-wrap: wrap;
+    }
+
+    .animals-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .animals-search {
+        width: 100%;
+    }
+
+    .animals-toolbar-right {
+        justify-content: space-between;
+    }
+
+    .animal-detail-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .animal-danger-zone {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .animal-delete-button {
+        width: 100%;
+    }
+
+    .delete-dialog-actions {
+        flex-direction: column-reverse;
+    }
+
+    .delete-cancel-button,
+    .delete-confirm-button {
+        width: 100%;
+    }
+}

@@ -1,0 +1,921 @@
+/* ==========================================================================
+   HERDSENSE AI — MANUAL TELEMETRY
+   Enterprise command-center interface
+   ========================================================================== */
+
+.manual-telemetry-page {
+    width: 100%;
+    max-width: 1680px;
+    margin: 0 auto;
+    padding: 30px 34px 50px;
+    color: var(--text-primary, #f5f7fa);
+}
+
+/* ==========================================================================
+   HEADER
+   ========================================================================== */
+
+.manual-telemetry-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 30px;
+    margin-bottom: 24px;
+}
+
+.manual-telemetry-eyebrow,
+.manual-telemetry-section-label {
+    color: #7b8793;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.manual-telemetry-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 7px;
+}
+
+.manual-telemetry-header h1 {
+    margin: 0;
+    color: #f3f5f7;
+    font-size: clamp(28px, 3vw, 40px);
+    font-weight: 650;
+    letter-spacing: -0.045em;
+    line-height: 1;
+}
+
+.manual-telemetry-mode {
+    display: inline-flex;
+    align-items: center;
+    height: 23px;
+    padding: 0 9px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.035);
+    color: #87929d;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.manual-telemetry-header p {
+    max-width: 650px;
+    margin: 12px 0 0;
+    color: #87939f;
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+.manual-telemetry-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.manual-telemetry-api-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 13px;
+    border: 1px solid rgba(255, 255, 255, 0.065);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.025);
+    color: #a5afb8;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.manual-telemetry-api-status > span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #59636e;
+}
+
+.manual-telemetry-api-status.online > span {
+    background: #69db8f;
+    box-shadow: 0 0 0 4px rgba(105, 219, 143, 0.07);
+}
+
+.manual-telemetry-api-status.offline > span {
+    background: #df6873;
+}
+
+.manual-telemetry-back-button {
+    min-height: 46px;
+    padding: 0 14px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #c3cad2;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    transition:
+        background 150ms ease,
+        border-color 150ms ease;
+}
+
+.manual-telemetry-back-button:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* ==========================================================================
+   ERROR / NOTICE
+   ========================================================================== */
+
+.manual-telemetry-error,
+.manual-telemetry-export-notice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding: 13px 15px;
+    border-radius: 9px;
+}
+
+.manual-telemetry-error {
+    border: 1px solid rgba(228, 92, 103, 0.18);
+    background: rgba(228, 92, 103, 0.05);
+}
+
+.manual-telemetry-error-icon {
+    display: grid;
+    width: 27px;
+    height: 27px;
+    place-items: center;
+    border-radius: 7px;
+    background: rgba(228, 92, 103, 0.12);
+    color: #ef7c84;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.manual-telemetry-error strong,
+.manual-telemetry-error span {
+    display: block;
+}
+
+.manual-telemetry-error strong {
+    color: #e6b5b8;
+    font-size: 11px;
+}
+
+.manual-telemetry-error span {
+    margin-top: 3px;
+    color: #9a777b;
+    font-size: 10px;
+}
+
+.manual-telemetry-export-notice {
+    border: 1px solid rgba(105, 219, 143, 0.18);
+    background: rgba(105, 219, 143, 0.05);
+    color: #b7d6be;
+    font-size: 10px;
+}
+
+.manual-telemetry-export-notice span {
+    color: #69db8f;
+    font-weight: 900;
+}
+
+/* ==========================================================================
+   MAIN LAYOUT
+   ========================================================================== */
+
+.manual-telemetry-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(330px, 0.75fr);
+    gap: 14px;
+    align-items: start;
+}
+
+/* ==========================================================================
+   FORM PANEL
+   ========================================================================== */
+
+.manual-telemetry-panel,
+.manual-telemetry-info-card,
+.manual-telemetry-success {
+    border: 1px solid rgba(255, 255, 255, 0.065);
+    border-radius: 12px;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.028),
+            rgba(255, 255, 255, 0.012)
+        );
+}
+
+.manual-telemetry-panel {
+    overflow: hidden;
+}
+
+.manual-telemetry-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 23px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.manual-telemetry-panel-header h2 {
+    margin: 7px 0 0;
+    color: #e9edf1;
+    font-size: 17px;
+    font-weight: 650;
+    letter-spacing: -0.025em;
+}
+
+.manual-telemetry-panel-header p {
+    max-width: 540px;
+    margin: 7px 0 0;
+    color: #687582;
+    font-size: 10px;
+    line-height: 1.55;
+}
+
+.manual-telemetry-panel-indicator {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 0 9px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.025);
+    color: #707c88;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+}
+
+/* ==========================================================================
+   FORM
+   ========================================================================== */
+
+.manual-telemetry-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 14px;
+    padding: 23px;
+}
+
+.manual-telemetry-field {
+    min-width: 0;
+}
+
+.manual-telemetry-field.full {
+    grid-column: 1 / -1;
+}
+
+.manual-telemetry-field label {
+    display: block;
+    margin-bottom: 7px;
+    color: #687480;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.manual-telemetry-field input,
+.manual-telemetry-field select {
+    width: 100%;
+    height: 43px;
+    padding: 0 12px;
+    border: 1px solid rgba(255, 255, 255, 0.075);
+    border-radius: 7px;
+    outline: none;
+    background: rgba(255, 255, 255, 0.025);
+    color: #d9dfe5;
+    font-family: inherit;
+    font-size: 11px;
+    transition:
+        border-color 150ms ease,
+        background 150ms ease;
+}
+
+.manual-telemetry-field select {
+    cursor: pointer;
+}
+
+.manual-telemetry-field input::placeholder {
+    color: #505c68;
+}
+
+.manual-telemetry-field input:focus,
+.manual-telemetry-field select:focus {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.manual-telemetry-field select option {
+    background: #171b20;
+    color: #e2e6ea;
+}
+
+.manual-telemetry-input-unit {
+    position: relative;
+}
+
+.manual-telemetry-input-unit input {
+    padding-right: 58px;
+}
+
+.manual-telemetry-input-unit > span {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    color: #697580;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.manual-telemetry-field small {
+    display: block;
+    margin-top: 6px;
+    color: #56636f;
+    font-size: 8px;
+    line-height: 1.5;
+}
+
+/* ==========================================================================
+   LOCATION SUBSECTION
+   ========================================================================== */
+
+.manual-telemetry-subsection {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.manual-telemetry-subsection h3 {
+    margin: 7px 0 0;
+    color: #dfe4e9;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.manual-telemetry-subsection p {
+    margin: 6px 0 0;
+    color: #687582;
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+/* ==========================================================================
+   FORM ACTIONS
+   ========================================================================== */
+
+.manual-telemetry-actions {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 5px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.manual-telemetry-clear,
+.manual-telemetry-submit {
+    min-height: 43px;
+    padding: 0 17px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 750;
+}
+
+.manual-telemetry-clear {
+    border: 1px solid rgba(255, 255, 255, 0.075);
+    background: transparent;
+    color: #88939e;
+}
+
+.manual-telemetry-clear:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.04);
+    color: #c4cbd2;
+}
+
+.manual-telemetry-submit {
+    border: 1px solid #e7eaed;
+    background: #e7eaed;
+    color: #101317;
+}
+
+.manual-telemetry-submit:hover:not(:disabled) {
+    background: #fff;
+}
+
+.manual-telemetry-clear:disabled,
+.manual-telemetry-submit:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+/* ==========================================================================
+   INFO COLUMN
+   ========================================================================== */
+
+.manual-telemetry-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.manual-telemetry-info-card {
+    padding: 21px;
+}
+
+.manual-telemetry-primary-card {
+    padding-bottom: 17px;
+}
+
+.manual-telemetry-info-card h2 {
+    margin: 11px 0 0;
+    color: #e9edf1;
+    font-size: 21px;
+    font-weight: 620;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+}
+
+.manual-telemetry-info-card h3 {
+    margin: 9px 0 0;
+    color: #dce2e7;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.manual-telemetry-info-card p {
+    margin: 11px 0 0;
+    color: #687581;
+    font-size: 9px;
+    line-height: 1.65;
+}
+
+/* ==========================================================================
+   PIPELINE
+   ========================================================================== */
+
+.manual-telemetry-pipeline {
+    margin-top: 19px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.manual-telemetry-pipeline > div {
+    display: grid;
+    grid-template-columns: 29px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.manual-telemetry-pipeline > div:last-child {
+    border-bottom: 0;
+}
+
+.manual-telemetry-pipeline > div > span {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    grid-row: 1 / 3;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+    color: #697581;
+    font-size: 8px;
+    font-weight: 800;
+}
+
+.manual-telemetry-pipeline strong {
+    align-self: end;
+    color: #cdd4db;
+    font-size: 9px;
+}
+
+.manual-telemetry-pipeline small {
+    margin-top: 3px;
+    color: #586570;
+    font-size: 8px;
+}
+
+/* ==========================================================================
+   CRITICAL TEST
+   ========================================================================== */
+
+.manual-telemetry-example {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 15px;
+}
+
+.manual-telemetry-example > div {
+    padding: 11px;
+    border: 1px solid rgba(226, 95, 105, 0.1);
+    border-radius: 7px;
+    background: rgba(226, 95, 105, 0.035);
+}
+
+.manual-telemetry-example span,
+.manual-telemetry-example strong {
+    display: block;
+}
+
+.manual-telemetry-example span {
+    color: #75676a;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.manual-telemetry-example strong {
+    margin-top: 7px;
+    color: #d98088;
+    font-size: 11px;
+}
+
+/* ==========================================================================
+   COMPACT CARD
+   ========================================================================== */
+
+.manual-telemetry-info-card.compact {
+    padding: 17px 21px;
+}
+
+.manual-telemetry-info-card.compact p {
+    margin-top: 8px;
+}
+
+/* ==========================================================================
+   SUCCESS
+   ========================================================================== */
+
+.manual-telemetry-success {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 17px;
+    margin-top: 14px;
+    padding: 18px 20px;
+    border-color: rgba(103, 219, 143, 0.14);
+    background:
+        linear-gradient(
+            145deg,
+            rgba(103, 219, 143, 0.045),
+            rgba(255, 255, 255, 0.012)
+        );
+}
+
+.manual-telemetry-success-icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid rgba(103, 219, 143, 0.17);
+    border-radius: 9px;
+    background: rgba(103, 219, 143, 0.07);
+    color: #70dc93;
+    font-size: 16px;
+    font-weight: 850;
+}
+
+.manual-telemetry-success-copy h2 {
+    margin: 6px 0 0;
+    color: #dce7df;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.manual-telemetry-success-copy p {
+    margin: 5px 0 0;
+    color: #708079;
+    font-size: 9px;
+}
+
+.manual-telemetry-success-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.manual-telemetry-success-actions > button {
+    min-height: 35px;
+    padding: 0 11px;
+    border: 1px solid rgba(255, 255, 255, 0.075);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.035);
+    color: #c5ccd3;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 8px;
+    font-weight: 750;
+}
+
+.manual-telemetry-success-actions > button:hover {
+    background: rgba(255, 255, 255, 0.065);
+}
+
+/* ==========================================================================
+   EXPORT
+   ========================================================================== */
+
+.manual-export {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.manual-export-download,
+.manual-export-share {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 35px;
+    padding: 0 10px;
+    border: 1px solid rgba(255, 255, 255, 0.075);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.035);
+    color: #c5ccd3;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 8px;
+    font-weight: 750;
+}
+
+.manual-export-download:hover,
+.manual-export-share:hover {
+    background: rgba(255, 255, 255, 0.065);
+}
+
+.manual-export-download > span,
+.manual-export-share > span {
+    font-size: 13px;
+}
+
+.manual-export-download > small {
+    color: #717d88;
+    font-size: 8px;
+}
+
+.manual-export-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 7px);
+    z-index: 100;
+    width: 195px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 8px;
+    background: #171b20;
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.45);
+}
+
+.manual-export-menu > div {
+    padding: 7px 8px;
+    color: #5f6b77;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+}
+
+.manual-export-menu button {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    padding: 8px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: #d8dee4;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+}
+
+.manual-export-menu button:hover {
+    background: rgba(255, 255, 255, 0.055);
+}
+
+.manual-export-menu strong {
+    font-size: 9px;
+}
+
+.manual-export-menu span {
+    margin-top: 3px;
+    color: #64717d;
+    font-size: 7px;
+}
+
+/* ==========================================================================
+   LOADING
+   ========================================================================== */
+
+.manual-telemetry-loading {
+    min-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.manual-telemetry-loading-mark {
+    display: grid;
+    width: 50px;
+    height: 50px;
+    margin-bottom: 8px;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.035);
+    color: #d9dee4;
+    font-size: 12px;
+    font-weight: 850;
+}
+
+.manual-telemetry-loading strong {
+    color: #dce1e6;
+    font-size: 12px;
+}
+
+.manual-telemetry-loading span {
+    color: #626e7a;
+    font-size: 10px;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 1100px) {
+    .manual-telemetry-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .manual-telemetry-info {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .manual-telemetry-primary-card {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 850px) {
+    .manual-telemetry-page {
+        padding: 24px 20px 40px;
+    }
+
+    .manual-telemetry-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .manual-telemetry-header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .manual-telemetry-form {
+        grid-template-columns: 1fr;
+    }
+
+    .manual-telemetry-info {
+        grid-template-columns: 1fr;
+    }
+
+    .manual-telemetry-success {
+        grid-template-columns: auto 1fr;
+    }
+
+    .manual-telemetry-success-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 600px) {
+    .manual-telemetry-page {
+        padding: 18px 13px 30px;
+    }
+
+    .manual-telemetry-header-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .manual-telemetry-api-status,
+    .manual-telemetry-back-button {
+        width: 100%;
+    }
+
+    .manual-telemetry-panel-header {
+        flex-direction: column;
+    }
+
+    .manual-telemetry-form {
+        padding: 18px;
+    }
+
+    .manual-telemetry-example {
+        grid-template-columns: 1fr;
+    }
+
+    .manual-telemetry-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .manual-telemetry-clear,
+    .manual-telemetry-submit {
+        width: 100%;
+    }
+
+    .manual-telemetry-success {
+        grid-template-columns: 1fr;
+    }
+
+    .manual-telemetry-success-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .manual-telemetry-success-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .manual-export,
+    .manual-export-download,
+    .manual-export-share,
+    .manual-telemetry-success-actions > button {
+        width: 100%;
+    }
+
+    .manual-export-download,
+    .manual-export-share {
+        flex: 1;
+    }
+
+    .manual-export-menu {
+        right: 0;
+        bottom: calc(100% + 8px);
+        width: 100%;
+    }
+}
+
+/* ==========================================================================
+   PRINT / PDF
+   ========================================================================== */
+
+@media print {
+    .manual-telemetry-page {
+        padding: 0;
+    }
+
+    .manual-telemetry-header-actions,
+    .manual-telemetry-actions,
+    .manual-telemetry-info,
+    .manual-telemetry-error,
+    .manual-telemetry-export-notice,
+    .manual-export,
+    .manual-telemetry-success-actions {
+        display: none !important;
+    }
+
+    .manual-telemetry-panel,
+    .manual-telemetry-success {
+        border: 1px solid #ddd;
+        box-shadow: none;
+        background: #fff;
+    }
+
+    .manual-telemetry-header h1,
+    .manual-telemetry-panel-header h2,
+    .manual-telemetry-field label,
+    .manual-telemetry-field input,
+    .manual-telemetry-field select {
+        color: #111 !important;
+    }
+}

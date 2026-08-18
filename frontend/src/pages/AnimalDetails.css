@@ -1,0 +1,767 @@
+.animal-detail-page {
+    width: 100%;
+    padding: 30px 38px 55px;
+    color: var(--text-primary, #f5f5f5);
+}
+
+.animal-detail-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 25px;
+}
+
+.animal-back-button,
+.animal-refresh {
+    height: 37px;
+    padding: 0 13px;
+    border: 1px solid var(--border, #292929);
+    border-radius: 8px;
+    background: var(--surface, #111);
+    color: var(--text-secondary, #aaa);
+    cursor: pointer;
+    font-size: 10px;
+}
+
+.animal-back-button:hover,
+.animal-refresh:hover {
+    color: var(--text-primary, #fff);
+    border-color: #444;
+}
+
+.animal-detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.animal-api-indicator {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 37px;
+    padding: 0 12px;
+    border: 1px solid var(--border, #292929);
+    border-radius: 8px;
+    background: var(--surface, #111);
+    color: #777;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .1em;
+}
+
+.animal-api-indicator span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #555;
+}
+
+.animal-api-indicator.online span {
+    background: #27dc61;
+    box-shadow: 0 0 9px rgba(39, 220, 97, .8);
+}
+
+.animal-api-indicator.offline span {
+    background: #ef4444;
+}
+
+.animal-detail-error {
+    margin-bottom: 18px;
+    padding: 13px 15px;
+    border: 1px solid rgba(239,68,68,.3);
+    border-radius: 9px;
+    background: rgba(239,68,68,.07);
+    color: #f87171;
+    font-size: 11px;
+}
+
+/* HERO */
+
+.animal-profile-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 25px;
+    padding: 27px;
+    margin-bottom: 13px;
+    border: 1px solid var(--border, #292929);
+    border-radius: 12px;
+    background: var(--surface, #111);
+}
+
+.animal-profile-identity {
+    display: flex;
+    align-items: center;
+    gap: 17px;
+}
+
+.animal-profile-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 62px;
+    height: 62px;
+    border: 1px solid #343434;
+    border-radius: 13px;
+    background: #181818;
+    color: #eee;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.animal-profile-eyebrow {
+    display: block;
+    margin-bottom: 7px;
+    color: #666;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .17em;
+}
+
+.animal-profile-identity h1 {
+    margin: 0;
+    color: var(--text-primary, #f5f5f5);
+    font-size: 34px;
+    font-weight: 650;
+    letter-spacing: -.045em;
+}
+
+.animal-profile-identity p {
+    margin: 7px 0 0;
+    color: #6d6d6d;
+    font-size: 10px;
+}
+
+.animal-profile-status {
+    min-width: 155px;
+    padding: 14px 16px;
+    border: 1px solid var(--border, #292929);
+    border-radius: 9px;
+}
+
+.animal-profile-status > span:first-child {
+    display: block;
+    margin-bottom: 9px;
+    color: #606060;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .13em;
+}
+
+/* STATUS */
+
+.animal-detail-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.animal-detail-status .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.animal-detail-status.healthy {
+    color: #35db68;
+    background: rgba(35,219,104,.08);
+}
+
+.animal-detail-status.healthy .status-dot {
+    background: #35db68;
+}
+
+.animal-detail-status.warning {
+    color: #f0ad24;
+    background: rgba(240,173,36,.09);
+}
+
+.animal-detail-status.warning .status-dot {
+    background: #f0ad24;
+}
+
+.animal-detail-status.critical {
+    color: #ff4e4e;
+    background: rgba(239,68,68,.1);
+}
+
+.animal-detail-status.critical .status-dot {
+    background: #ff4e4e;
+    box-shadow: 0 0 8px rgba(239,68,68,.7);
+}
+
+/* PRIMARY METRICS */
+
+.animal-primary-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 12px;
+    margin-bottom: 13px;
+}
+
+.animal-metric-card {
+    min-height: 135px;
+    padding: 21px;
+    border: 1px solid var(--border, #292929);
+    border-radius: 11px;
+    background: var(--surface, #111);
+}
+
+.animal-metric-label {
+    display: block;
+    color: #656565;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .15em;
+}
+
+.animal-metric-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 17px;
+}
+
+.animal-metric-value-row strong {
+    color: #eee;
+    font-size: 31px;
+    font-weight: 500;
+    letter-spacing: -.04em;
+}
+
+.animal-metric-value-row strong.healthy {
+    color: #38dc68;
+}
+
+.animal-metric-value-row strong.warning {
+    color: #f0ad24;
+}
+
+.animal-metric-value-row strong.critical {
+    color: #ff4e4e;
+}
+
+.animal-metric-unit {
+    color: #777;
+    font-size: 10px;
+}
+
+.animal-metric-description {
+    display: block;
+    margin-top: 9px;
+    color: #555;
+    font-size: 9px;
+}
+
+/* GRID */
+
+.animal-intelligence-grid {
+    display: grid;
+    grid-template-columns: 1.25fr .75fr;
+    gap: 13px;
+    margin-bottom: 13px;
+}
+
+.animal-section-card {
+    overflow: hidden;
+    border: 1px solid var(--border, #292929);
+    border-radius: 11px;
+    background: var(--surface, #111);
+}
+
+.animal-section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 22px 23px;
+    border-bottom: 1px solid var(--border, #252525);
+}
+
+.animal-section-header > div > span:first-child {
+    display: block;
+    margin-bottom: 7px;
+    color: #606060;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .15em;
+}
+
+.animal-section-header h2 {
+    margin: 0;
+    color: var(--text-primary, #eee);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -.025em;
+}
+
+.signal-live {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #777;
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.signal-live span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #31dc68;
+    box-shadow: 0 0 7px rgba(49,220,104,.7);
+}
+
+.gps-live,
+.history-count {
+    color: #666;
+    font-size: 9px;
+}
+
+.signal-list {
+    padding: 23px;
+}
+
+.signal-row {
+    margin-bottom: 21px;
+}
+
+.signal-row:last-child {
+    margin-bottom: 0;
+}
+
+.signal-row-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.signal-row-header span {
+    color: #777;
+    font-size: 10px;
+}
+
+.signal-row-header strong {
+    color: #aaa;
+    font-size: 10px;
+}
+
+.signal-row-header strong.critical {
+    color: #ff4e4e;
+}
+
+.signal-row-header strong.warning {
+    color: #f0ad24;
+}
+
+.signal-row-header strong.healthy {
+    color: #38dc68;
+}
+
+.signal-track {
+    width: 100%;
+    height: 5px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: #242424;
+}
+
+.signal-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: #888;
+}
+
+.signal-fill.healthy {
+    background: #36dc68;
+}
+
+.signal-fill.warning {
+    background: #f0ad24;
+}
+
+.signal-fill.critical {
+    background: #ef4444;
+}
+
+/* GPS */
+
+.animal-gps-display {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding: 28px 20px 23px;
+    text-align: center;
+}
+
+.gps-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 13px;
+    border: 1px solid #303030;
+    border-radius: 50%;
+    background: #181818;
+    color: #ddd;
+    font-size: 20px;
+}
+
+.animal-gps-display strong {
+    color: #ddd;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+}
+
+.animal-gps-display span {
+    margin-top: 7px;
+    color: #555;
+    font-size: 9px;
+}
+
+.animal-last-signal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 20px 20px;
+    padding: 13px;
+    border: 1px solid #242424;
+    border-radius: 8px;
+    background: #0d0d0d;
+}
+
+.animal-last-signal span {
+    color: #5d5d5d;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .12em;
+}
+
+.animal-last-signal strong {
+    color: #888;
+    font-size: 9px;
+    font-weight: 500;
+}
+
+/* HISTORY */
+
+.animal-history-card {
+    margin-bottom: 13px;
+}
+
+.animal-history-table {
+    width: 100%;
+}
+
+.animal-history-head,
+.animal-history-row {
+    display: grid;
+    grid-template-columns: 1.5fr repeat(4, 1fr);
+    align-items: center;
+    min-height: 47px;
+    padding: 0 23px;
+    column-gap: 15px;
+}
+
+.animal-history-head {
+    border-bottom: 1px solid #252525;
+    background: rgba(255,255,255,.012);
+    color: #5c5c5c;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .13em;
+}
+
+.animal-history-row {
+    border-bottom: 1px solid rgba(255,255,255,.045);
+    color: #666;
+    font-size: 9px;
+}
+
+.animal-history-row:last-child {
+    border-bottom: 0;
+}
+
+.animal-history-row strong {
+    color: #aaa;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.animal-history-empty {
+    padding: 45px;
+    color: #5c5c5c;
+    text-align: center;
+    font-size: 10px;
+}
+
+/* ALERTS */
+
+.animal-alert-card {
+    margin-bottom: 25px;
+}
+
+.animal-section-header button {
+    border: 0;
+    background: transparent;
+    color: #777;
+    cursor: pointer;
+    font-size: 9px;
+}
+
+.animal-section-header button:hover {
+    color: #eee;
+}
+
+.animal-clear-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 7px;
+    padding: 45px 20px;
+}
+
+.animal-clear-state > div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(35,219,104,.08);
+    color: #35db68;
+}
+
+.animal-clear-state strong {
+    color: #aaa;
+    font-size: 11px;
+}
+
+.animal-clear-state span {
+    color: #555;
+    font-size: 9px;
+}
+
+.animal-alert-list {
+    padding: 4px 23px;
+}
+
+.animal-alert-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 64px;
+    border-bottom: 1px solid rgba(255,255,255,.045);
+}
+
+.animal-alert-item:last-child {
+    border-bottom: 0;
+}
+
+.animal-alert-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 27px;
+    height: 27px;
+    flex: 0 0 27px;
+    border-radius: 7px;
+    background: #242424;
+    color: #999;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.animal-alert-item.critical .animal-alert-indicator {
+    background: rgba(239,68,68,.12);
+    color: #ff4e4e;
+}
+
+.animal-alert-item.warning .animal-alert-indicator {
+    background: rgba(240,173,36,.1);
+    color: #f0ad24;
+}
+
+.animal-alert-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 4px;
+}
+
+.animal-alert-content strong {
+    color: #aaa;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.animal-alert-content span {
+    color: #555;
+    font-size: 8px;
+}
+
+.animal-alert-severity {
+    color: #666;
+    font-size: 8px;
+    text-transform: uppercase;
+}
+
+/* FOOTER */
+
+.animal-detail-footer {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 2px;
+    color: #666;
+    font-size: 9px;
+}
+
+.animal-detail-footer span {
+    color: #444;
+}
+
+.animal-detail-loading,
+.animal-not-found {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    min-height: 70vh;
+    text-align: center;
+}
+
+.animal-detail-loading div,
+.animal-not-found-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    background: #eee;
+    color: #111;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.animal-detail-loading strong,
+.animal-not-found h1 {
+    color: #eee;
+    font-size: 14px;
+}
+
+.animal-detail-loading span,
+.animal-not-found p {
+    margin-top: 6px;
+    color: #666;
+    font-size: 10px;
+}
+
+.animal-not-found button {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border: 1px solid #303030;
+    border-radius: 8px;
+    background: #151515;
+    color: #aaa;
+    cursor: pointer;
+}
+
+/* LIGHT MODE */
+
+[data-theme="light"] .animal-profile-hero,
+[data-theme="light"] .animal-metric-card,
+[data-theme="light"] .animal-section-card {
+    border-color: #e5e7eb;
+    background: #fff;
+}
+
+[data-theme="light"] .animal-profile-identity h1,
+[data-theme="light"] .animal-section-header h2 {
+    color: #111827;
+}
+
+[data-theme="light"] .animal-profile-avatar,
+[data-theme="light"] .gps-icon {
+    border-color: #e5e7eb;
+    background: #f5f6f7;
+    color: #344054;
+}
+
+[data-theme="light"] .animal-detail-topbar button,
+[data-theme="light"] .animal-api-indicator {
+    border-color: #e5e7eb;
+    background: #fff;
+    color: #667085;
+}
+
+[data-theme="light"] .animal-profile-status {
+    border-color: #e5e7eb;
+}
+
+[data-theme="light"] .animal-history-head {
+    border-color: #e5e7eb;
+    background: #fafafa;
+}
+
+[data-theme="light"] .animal-history-row {
+    border-color: #eef0f2;
+    color: #667085;
+}
+
+[data-theme="light"] .animal-history-row strong {
+    color: #475467;
+}
+
+[data-theme="light"] .animal-last-signal {
+    border-color: #e5e7eb;
+    background: #f8fafc;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1100px) {
+    .animal-primary-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .animal-intelligence-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .animal-detail-page {
+        padding: 22px 16px 40px;
+    }
+
+    .animal-profile-hero {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .animal-profile-status {
+        width: 100%;
+    }
+
+    .animal-primary-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .animal-history-table {
+        overflow-x: auto;
+    }
+
+    .animal-history-head,
+    .animal-history-row {
+        min-width: 700px;
+    }
+}

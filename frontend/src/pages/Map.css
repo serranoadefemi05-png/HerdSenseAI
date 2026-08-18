@@ -1,0 +1,258 @@
+/* ==========================================================================
+   HERDSENSE AI — LIVE MAP PAGE
+   ========================================================================== */
+
+.map-page {
+    width: 100%;
+    min-height: 100%;
+    position: relative;
+}
+
+
+/* ==========================================================================
+   ERROR
+   ========================================================================== */
+
+.map-page__error {
+    width: 100%;
+    box-sizing: border-box;
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    margin-bottom: 12px;
+
+    padding: 10px 13px;
+
+    border: 1px solid rgba(238, 91, 104, 0.22);
+
+    border-radius: 8px;
+
+    background: rgba(238, 91, 104, 0.07);
+
+    color: #ee8992;
+
+    font-size: 10px;
+    font-weight: 700;
+
+    letter-spacing: 0.04em;
+}
+
+
+.map-page__error-dot {
+    width: 7px;
+    height: 7px;
+
+    flex: 0 0 auto;
+
+    border-radius: 50%;
+
+    background: #ee5b68;
+
+    box-shadow:
+        0 0 0 4px
+        rgba(238, 91, 104, 0.08);
+}
+
+
+/* ==========================================================================
+   STATUS BAR
+   ========================================================================== */
+
+.map-page__status-bar {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    margin-top: 10px;
+
+    padding: 9px 12px;
+
+    box-sizing: border-box;
+
+    border: 1px solid
+        rgba(255, 255, 255, 0.06);
+
+    border-radius: 8px;
+
+    background: rgba(17, 22, 29, 0.72);
+
+    color: #7f8995;
+
+    font-size: 9px;
+    font-weight: 700;
+
+    letter-spacing: 0.08em;
+
+    text-transform: uppercase;
+}
+
+
+.map-page__status-group {
+    display: flex;
+    align-items: center;
+
+    gap: 18px;
+}
+
+
+/* ==========================================================================
+   API CONNECTION
+   ========================================================================== */
+
+.map-page__connection {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 7px;
+}
+
+
+.map-page__connection > span {
+    width: 6px;
+    height: 6px;
+
+    border-radius: 50%;
+
+    background: #777;
+}
+
+
+.map-page__connection.is-online {
+    color: #72dba2;
+}
+
+
+.map-page__connection.is-online > span {
+    background: #50d890;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(80, 216, 144, 0.08);
+}
+
+
+.map-page__connection.is-offline {
+    color: #ee8992;
+}
+
+
+.map-page__connection.is-offline > span {
+    background: #ee5b68;
+}
+
+
+/* ==========================================================================
+   REGISTERED ANIMAL COUNT
+   ========================================================================== */
+
+.map-page__registered {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 5px;
+}
+
+
+.map-page__registered strong {
+    color: #e7edf2;
+
+    font-size: 11px;
+}
+
+
+/* ==========================================================================
+   FULLSCREEN
+   ========================================================================== */
+
+.map-page .map-view--fullscreen {
+    position: fixed;
+
+    inset: 0;
+
+    width: 100vw;
+    height: 100vh;
+
+    min-height: 100vh;
+
+    margin: 0;
+
+    padding: 20px;
+
+    box-sizing: border-box;
+
+    z-index: 9999;
+
+    background: #0b0f14;
+}
+
+
+.map-page .map-view--fullscreen
+.map-view__body {
+    width: 100%;
+
+    flex: 1;
+
+    min-height: 0;
+}
+
+
+.map-page .map-view--fullscreen
+.map-view__leaflet {
+    width: 100%;
+    height: 100%;
+}
+
+
+/*
+ * Hide the normal page registry footer while the
+ * map is occupying the entire viewport.
+ */
+
+.map-page:has(
+    .map-view--fullscreen
+)
+.map-page__status-bar {
+    display: none;
+}
+
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 900px) {
+
+    .map-page .map-view--fullscreen {
+        padding: 14px;
+    }
+
+    .map-page__status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+}
+
+
+@media (max-width: 640px) {
+
+    .map-page .map-view--fullscreen {
+        padding: 8px;
+    }
+
+    .map-page__status-bar {
+        gap: 8px;
+    }
+
+    .map-page__status-group {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+}
