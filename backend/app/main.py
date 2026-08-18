@@ -82,7 +82,7 @@ def root():
         "message": "Welcome to HerdSense AI",
         "status": "Running",
         "version": "1.0.0",
-        "environment": settings.ENVIRONMENT,
+        "environment": settings.APP_ENV,
         "blockchain": settings.BASE_NETWORK,
     }
 
@@ -96,6 +96,6 @@ def health_check():
     return {
         "server": "Healthy",
         "service": "HerdSense AI API",
-        "environment": settings.ENVIRONMENT,
+        "environment": settings.APP_ENV,
         "blockchain": settings.BASE_NETWORK,
     }
