@@ -10,15 +10,27 @@ from app.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 
-# Render commonly provides PostgreSQL URLs beginning with:
-# postgresql://
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL is not configured."
+    )
+
+
+# ============================================================================
+# DATABASE URL NORMALIZATION
+# ============================================================================
+
+# Render commonly provides:
+#   postgresql://...
 #
-# SQLAlchemy with psycopg expects:
-# postgresql+psycopg://
+# psycopg/SQLAlchemy works with:
+#   postgresql+psycopg://...
 #
-# Normalize the URL automatically so the same environment variable works
-# locally and in production.
+# Normalize automatically so the same environment variable
+# works locally and in production.
+
 if DATABASE_URL.startswith("postgresql://"):
+
     DATABASE_URL = DATABASE_URL.replace(
         "postgresql://",
         "postgresql+psycopg://",
@@ -26,6 +38,7 @@ if DATABASE_URL.startswith("postgresql://"):
     )
 
 elif DATABASE_URL.startswith("postgres://"):
+
     DATABASE_URL = DATABASE_URL.replace(
         "postgres://",
         "postgresql+psycopg://",
@@ -33,11 +46,19 @@ elif DATABASE_URL.startswith("postgres://"):
     )
 
 
+# ============================================================================
+# ENGINE
+# ============================================================================
+
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
 )
 
+
+# ============================================================================
+# SESSION
+# ============================================================================
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -46,8 +67,16 @@ SessionLocal = sessionmaker(
 )
 
 
+# ============================================================================
+# SQLALCHEMY BASE
+# ============================================================================
+
 Base = declarative_base()
 
+
+# ============================================================================
+# DATABASE SESSION DEPENDENCY
+# ============================================================================
 
 def get_db():
     """
@@ -64,3 +93,43 @@ def get_db():
 
     finally:
         db.close()
+
+
+# ============================================================================
+# DATABASE INITIALIZATION
+# ============================================================================
+
+def initialize_database():
+    """
+    Create all SQLAlchemy tables that do not already exist.
+
+    This is intentionally safe to run repeatedly.
+
+    Existing tables are NOT dropped or modified.
+    SQLAlchemy only creates tables that are missing.
+    """
+
+    # Import every model before create_all().
+    #
+    # This is extremely important because SQLAlchemy only
+    # knows about models that have been imported and registered
+    # with Base.metadata.
+
+    from app.models.user import User
+    from app.models.farm import Farm
+    from app.models.animal import Animal
+    from app.models.telemetry import Telemetry
+    from app.models.alert import Alert
+
+    # Prevent unused-import optimizations / lint issues.
+    _ = (
+        User,
+        Farm,
+        Animal,
+        Telemetry,
+        Alert,
+    )
+
+    Base.metadata.create_all(
+        bind=engine
+    )
