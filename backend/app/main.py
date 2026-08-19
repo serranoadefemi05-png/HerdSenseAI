@@ -13,8 +13,6 @@ from app.routers.websocket import router as websocket_router
 from app.routers.intelligence import router as intelligence_router
 from app.routers.disease_risk import router as disease_risk_router
 from app.routers.base import router as base_router
-
-# Admin router
 from app.routers.admin import router as admin_router
 
 
@@ -36,25 +34,81 @@ app = FastAPI(
 # CORS
 # =============================================================================
 
-allowed_origins = [
+ALLOWED_ORIGINS = [
+    # -------------------------------------------------------------------------
+    # Production
+    # -------------------------------------------------------------------------
+    "https://herdsenseai-frontend.onrender.com",
+
+    # -------------------------------------------------------------------------
+    # Local development
+    # -------------------------------------------------------------------------
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
 ]
 
-# Add configured frontend URL if it isn't already present
-if settings.FRONTEND_URL:
-    if settings.FRONTEND_URL not in allowed_origins:
-        allowed_origins.append(settings.FRONTEND_URL)
 
+# =============================================================================
+# OPTIONAL FRONTEND URL FROM ENVIRONMENT
+# =============================================================================
+
+try:
+    configured_frontend_url = (
+        getattr(settings, "FRONTEND_URL", None)
+    )
+
+    if configured_frontend_url:
+        configured_frontend_url = (
+            str(configured_frontend_url)
+            .strip()
+            .rstrip("/")
+        )
+
+        if (
+            configured_frontend_url
+            and configured_frontend_url
+            not in ALLOWED_ORIGINS
+        ):
+            ALLOWED_ORIGINS.append(
+                configured_frontend_url
+            )
+
+except Exception as exc:
+    print(
+        "WARNING: Unable to read FRONTEND_URL:",
+        exc,
+    )
+
+
+# Remove duplicates
+ALLOWED_ORIGINS = list(
+    dict.fromkeys(ALLOWED_ORIGINS)
+)
+
+
+print(
+    "HerdSense AI CORS origins:",
+    ALLOWED_ORIGINS,
+)
+
+
+# =============================================================================
+# CORS MIDDLEWARE
+# =============================================================================
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -62,28 +116,49 @@ app.add_middleware(
 # ROUTERS
 # =============================================================================
 
-app.include_router(auth_router)
+app.include_router(
+    auth_router
+)
 
-app.include_router(farm_router)
+app.include_router(
+    farm_router
+)
 
-app.include_router(animal_router)
+app.include_router(
+    animal_router
+)
 
-app.include_router(telemetry_router)
+app.include_router(
+    telemetry_router
+)
 
-app.include_router(dashboard_router)
+app.include_router(
+    dashboard_router
+)
 
-app.include_router(alert_router)
+app.include_router(
+    alert_router
+)
 
-app.include_router(websocket_router)
+app.include_router(
+    websocket_router
+)
 
-app.include_router(intelligence_router)
+app.include_router(
+    intelligence_router
+)
 
-app.include_router(disease_risk_router)
+app.include_router(
+    disease_risk_router
+)
 
-app.include_router(base_router)
+app.include_router(
+    base_router
+)
 
-# Admin control room
-app.include_router(admin_router)
+app.include_router(
+    admin_router
+)
 
 
 # =============================================================================
@@ -112,4 +187,25 @@ def health_check():
         "service": "HerdSense AI API",
         "environment": settings.APP_ENV,
         "blockchain": settings.BASE_NETWORK,
+    }
+
+
+# =============================================================================
+# CORS DEBUG ENDPOINT
+# =============================================================================
+#
+# Temporary/diagnostic endpoint.
+# This lets us confirm that the deployed backend is actually running
+# this version of main.py.
+#
+# We can remove it later if desired.
+# =============================================================================
+
+@app.get("/cors-check")
+def cors_check():
+    return {
+        "status": "ok",
+        "frontend": "https://herdsenseai-frontend.onrender.com",
+        "cors_configured": True,
+        "allowed_origins": ALLOWED_ORIGINS,
     }
