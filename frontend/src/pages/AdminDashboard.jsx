@@ -1,899 +1,1645 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
+
+import {
+    useLocation,
+    useNavigate,
+} from "react-router-dom";
+
+import api from "../api/api";
+
 import "./AdminDashboard.css";
 
-const API_BASE_URL =
-    import.meta.env.VITE_API_URL ||
-    "http://127.0.0.1:8000";
 
-function formatNumber(value) {
-    return new Intl.NumberFormat().format(value ?? 0);
-}
-
-function formatDate(value) {
-    if (!value) return "—";
-
-    return new Date(value).toLocaleString([], {
-        dateStyle: "medium",
-        timeStyle: "short",
-    });
-}
-
-function StatusIndicator({ status }) {
-    const healthy =
-        String(status).toLowerCase() === "healthy";
-
-    return (
-        <span
-            className={`admin-status ${
-                healthy
-                    ? "admin-status--healthy"
-                    : "admin-status--danger"
-            }`}
-        >
-            <span className="admin-status__dot" />
-            {healthy ? "Healthy" : status}
-        </span>
-    );
-}
-
-function KpiCard({
-    label,
-    value,
-    secondary,
-    icon,
-    variant = "default",
-}) {
-    return (
-        <div className={`admin-kpi admin-kpi--${variant}`}>
-            <div className="admin-kpi__top">
-                <span className="admin-kpi__label">
-                    {label}
-                </span>
-
-                <span className="admin-kpi__icon">
-                    {icon}
-                </span>
-            </div>
-
-            <div className="admin-kpi__value">
-                {formatNumber(value)}
-            </div>
-
-            {secondary && (
-                <div className="admin-kpi__secondary">
-                    {secondary}
-                </div>
-            )}
-        </div>
-    );
-}
+/* ============================================================================
+   ADMIN COMMAND CENTER
+   ============================================================================ */
 
 export default function AdminDashboard() {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState("");
 
-    const fetchOverview = useCallback(
-        async (showRefreshState = false) => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+
+    const [overview, setOverview] =
+        useState(null);
+
+    const [loading, setLoading] =
+        useState(true);
+
+    const [refreshing, setRefreshing] =
+        useState(false);
+
+    const [error, setError] =
+        useState("");
+
+    const [lastUpdated, setLastUpdated] =
+        useState(null);
+
+
+    /* ========================================================================
+       ADMIN PROFILE
+       ======================================================================== */
+
+    const administrator =
+        useMemo(() => {
+
             try {
-                if (showRefreshState) {
-                    setRefreshing(true);
-                } else {
-                    setLoading(true);
-                }
 
-                setError("");
-
-                const token =
+                return JSON.parse(
                     localStorage.getItem(
-                        "access_token"
-                    );
+                        "herdsense_user"
+                    )
+                ) || {};
 
-                if (!token) {
-                    throw new Error(
-                        "Authentication token not found."
-                    );
-                }
+            } catch {
 
-                const response = await fetch(
-                    `${API_BASE_URL}/api/v1/admin/overview`,
-                    {
-                        method: "GET",
-                        headers: {
-                            Accept:
-                                "application/json",
-                            Authorization:
-                                `Bearer ${token}`,
-                        },
-                    }
-                );
+                return {};
 
-                if (response.status === 401) {
-                    throw new Error(
-                        "Your session has expired. Please log in again."
-                    );
-                }
-
-                if (response.status === 403) {
-                    throw new Error(
-                        "Administrator access required."
-                    );
-                }
-
-                if (!response.ok) {
-                    throw new Error(
-                        `Request failed with status ${response.status}.`
-                    );
-                }
-
-                const result =
-                    await response.json();
-
-                setData(result);
-            } catch (err) {
-                console.error(
-                    "Admin overview error:",
-                    err
-                );
-
-                setError(
-                    err.message ||
-                        "Unable to load administrator data."
-                );
-            } finally {
-                setLoading(false);
-                setRefreshing(false);
             }
-        },
-        []
-    );
+
+        }, []);
+
+
+    /* ========================================================================
+       FETCH OVERVIEW
+       ======================================================================== */
+
+    const fetchOverview =
+        useCallback(
+            async (silent = false) => {
+
+                try {
+
+                    if (!silent) {
+                        setRefreshing(true);
+                    }
+
+                    setError("");
+
+                    const response =
+                        await api.get(
+                            "/admin/overview"
+                        );
+
+                    setOverview(
+                        response.data
+                    );
+
+                    setLastUpdated(
+                        new Date()
+                    );
+
+                } catch (err) {
+
+                    console.error(
+                        "Admin overview error:",
+                        err
+                    );
+
+
+                    if (
+                        err.response?.status ===
+                        401
+                    ) {
+
+                        localStorage.removeItem(
+                            "access_token"
+                        );
+
+                        localStorage.removeItem(
+                            "token"
+                        );
+
+                        localStorage.removeItem(
+                            "user_role"
+                        );
+
+                        localStorage.removeItem(
+                            "herdsense_user"
+                        );
+
+                        navigate(
+                            "/login",
+                            {
+                                replace: true,
+                            }
+                        );
+
+                        return;
+                    }
+
+
+                    if (
+                        err.response?.status ===
+                        403
+                    ) {
+
+                        setError(
+                            "Administrator access required."
+                        );
+
+                        return;
+                    }
+
+
+                    setError(
+                        err.response?.data?.detail ||
+                        "Unable to load administrator overview."
+                    );
+
+                } finally {
+
+                    setLoading(false);
+                    setRefreshing(false);
+
+                }
+
+            },
+            [navigate]
+        );
+
+
+    /* ========================================================================
+       INITIAL LOAD + LIVE REFRESH
+       ======================================================================== */
 
     useEffect(() => {
+
         fetchOverview();
 
-        const interval = setInterval(() => {
-            fetchOverview(true);
-        }, 30000);
+        const interval =
+            setInterval(
+                () => fetchOverview(true),
+                30000
+            );
 
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+        };
+
     }, [fetchOverview]);
 
-    if (loading) {
-        return (
-            <main className="admin-page admin-page--loading">
-                <div className="admin-loading">
-                    <div className="admin-loading__spinner" />
 
-                    <div>
-                        <h2>
-                            Initializing Control Room
-                        </h2>
+    /* ========================================================================
+       HEALTH
+       ======================================================================== */
 
-                        <p>
-                            Loading platform intelligence...
-                        </p>
-                    </div>
-                </div>
-            </main>
+    const health =
+        useMemo(() => {
+
+            if (!overview) {
+
+                return {
+                    percentage: 0,
+                    label: "Loading",
+                    description:
+                        "Collecting system intelligence.",
+                    state: "loading",
+                };
+
+            }
+
+
+            const animals =
+                overview.animals || {};
+
+            const totalAnimals =
+                Number(
+                    animals.total || 0
+                );
+
+            const healthyAnimals =
+                Number(
+                    animals.healthy || 0
+                );
+
+
+            const animalHealth =
+                totalAnimals > 0
+                    ? (
+                        healthyAnimals /
+                        totalAnimals
+                    ) * 100
+                    : 100;
+
+
+            const apiHealthy =
+                overview.system?.api ===
+                "healthy";
+
+
+            const databaseHealthy =
+                overview.system?.database ===
+                "healthy";
+
+
+            const infrastructureScore =
+                (
+                    (apiHealthy ? 100 : 0) +
+                    (databaseHealthy ? 100 : 0)
+                ) / 2;
+
+
+            let percentage =
+                Math.round(
+                    (
+                        infrastructureScore *
+                        0.5
+                    ) +
+                    (
+                        animalHealth *
+                        0.5
+                    )
+                );
+
+
+            percentage =
+                Math.max(
+                    0,
+                    Math.min(
+                        100,
+                        percentage
+                    )
+                );
+
+
+            let label = "Critical";
+            let description =
+                "Immediate attention required.";
+
+            let state = "critical";
+
+
+            if (percentage >= 95) {
+
+                label = "Excellent";
+
+                description =
+                    "System operating at peak health.";
+
+                state = "excellent";
+
+            } else if (percentage >= 85) {
+
+                label = "Healthy";
+
+                description =
+                    "System operating normally.";
+
+                state = "healthy";
+
+            } else if (percentage >= 70) {
+
+                label = "Stable";
+
+                description =
+                    "System operational with some risk.";
+
+                state = "stable";
+
+            } else if (percentage >= 50) {
+
+                label = "At Risk";
+
+                description =
+                    "Several operational conditions require attention.";
+
+                state = "risk";
+
+            }
+
+
+            return {
+                percentage,
+                label,
+                description,
+                state,
+            };
+
+        }, [overview]);
+
+
+    /* ========================================================================
+       RING
+       ======================================================================== */
+
+    const ringRadius = 88;
+
+    const ringCircumference =
+        2 *
+        Math.PI *
+        ringRadius;
+
+    const ringOffset =
+        ringCircumference -
+        (
+            health.percentage /
+            100
+        ) *
+        ringCircumference;
+
+
+    /* ========================================================================
+       DATA
+       ======================================================================== */
+
+    const users =
+        overview?.users || {};
+
+    const farms =
+        overview?.farms || {};
+
+    const animals =
+        overview?.animals || {};
+
+    const telemetry =
+        overview?.telemetry || {};
+
+    const alerts =
+        overview?.alerts || {};
+
+    const system =
+        overview?.system || {};
+
+
+    /* ========================================================================
+       SIDEBAR NAVIGATION
+       ======================================================================== */
+
+    const navGroups = [
+
+        {
+            label: "COMMAND",
+            items: [
+                {
+                    label: "Overview",
+                    path: "/admin",
+                    icon: "⌂",
+                },
+            ],
+        },
+
+        {
+            label: "OPERATIONS",
+            items: [
+                {
+                    label: "Animals",
+                    path: "/animals",
+                    icon: "◉",
+                },
+                {
+                    label: "Telemetry",
+                    path: "/telemetry",
+                    icon: "⌁",
+                },
+                {
+                    label: "Alerts",
+                    path: "/alerts",
+                    icon: "!",
+                },
+                {
+                    label: "Map",
+                    path: "/map",
+                    icon: "⌖",
+                },
+            ],
+        },
+
+        {
+            label: "INTELLIGENCE",
+            items: [
+                {
+                    label: "Analytics",
+                    path: "/analytics",
+                    icon: "◫",
+                },
+                {
+                    label: "Prediction",
+                    path: "/prediction",
+                    icon: "◇",
+                },
+                {
+                    label: "Reports",
+                    path: "/reports",
+                    icon: "▤",
+                },
+            ],
+        },
+
+        {
+            label: "SYSTEM",
+            items: [
+                {
+                    label: "Settings",
+                    path: "/settings",
+                    icon: "⚙",
+                },
+            ],
+        },
+
+    ];
+
+
+    /* ========================================================================
+       ACTIVE
+       ======================================================================== */
+
+    const isActive = (path) => {
+
+        if (path === "/admin") {
+            return location.pathname === "/admin";
+        }
+
+        return location.pathname.startsWith(
+            path
         );
+
+    };
+
+
+    /* ========================================================================
+       LOGOUT
+       ======================================================================== */
+
+    const handleLogout = () => {
+
+        localStorage.removeItem(
+            "access_token"
+        );
+
+        localStorage.removeItem(
+            "token"
+        );
+
+        localStorage.removeItem(
+            "user_role"
+        );
+
+        localStorage.removeItem(
+            "herdsense_user"
+        );
+
+        navigate(
+            "/login",
+            {
+                replace: true,
+            }
+        );
+
+    };
+
+
+    /* ========================================================================
+       LOADING
+       ======================================================================== */
+
+    if (loading) {
+
+        return (
+            <div className="admin-command-loading">
+
+                <div className="command-loader">
+                    <span />
+                </div>
+
+                <div>
+                    <strong>
+                        HERDSENSE AI
+                    </strong>
+
+                    <span>
+                        Initializing command center...
+                    </span>
+                </div>
+
+            </div>
+        );
+
     }
 
-    if (error && !data) {
+
+    /* ========================================================================
+       ERROR
+       ======================================================================== */
+
+    if (error && !overview) {
+
         return (
-            <main className="admin-page">
-                <div className="admin-error">
-                    <div className="admin-error__icon">
+            <div className="admin-command-loading">
+
+                <div className="command-error">
+
+                    <div className="command-error-mark">
                         !
                     </div>
 
-                    <div>
-                        <h2>
-                            Control Room Unavailable
-                        </h2>
+                    <strong>
+                        Command center unavailable
+                    </strong>
 
-                        <p>{error}</p>
-
-                        <button
-                            className="admin-button"
-                            onClick={() =>
-                                fetchOverview()
-                            }
-                        >
-                            Retry
-                        </button>
-                    </div>
-                </div>
-            </main>
-        );
-    }
-
-    const system = data?.system || {};
-    const users = data?.users || {};
-    const farms = data?.farms || {};
-    const animals = data?.animals || {};
-    const telemetry = data?.telemetry || {};
-    const alerts = data?.alerts || {};
-
-    return (
-        <main className="admin-page">
-
-            {/* ================================================================
-                HEADER
-            ================================================================ */}
-
-            <header className="admin-header">
-
-                <div className="admin-header__identity">
-
-                    <div className="admin-command-mark">
-                        HS
-                    </div>
-
-                    <div>
-                        <div className="admin-eyebrow">
-                            HERDSENSE AI
-                            <span />
-                            ADMINISTRATION
-                        </div>
-
-                        <h1>
-                            Control Room
-                        </h1>
-
-                        <p>
-                            Platform-wide intelligence,
-                            security and operations.
-                        </p>
-                    </div>
-
-                </div>
-
-                <div className="admin-header__actions">
-
-                    <div className="admin-live">
-                        <span />
-                        SYSTEM LIVE
-                    </div>
+                    <span>
+                        {error}
+                    </span>
 
                     <button
-                        className="admin-refresh"
+                        type="button"
                         onClick={() =>
-                            fetchOverview(true)
+                            fetchOverview()
                         }
-                        disabled={refreshing}
                     >
-                        <span
-                            className={
-                                refreshing
-                                    ? "admin-refresh__spin"
-                                    : ""
-                            }
-                        >
-                            ↻
-                        </span>
-
-                        {refreshing
-                            ? "Refreshing"
-                            : "Refresh"}
+                        Retry connection
                     </button>
 
                 </div>
 
-            </header>
+            </div>
+        );
 
+    }
 
-            {/* ================================================================
-                ADMIN IDENTITY
-            ================================================================ */}
 
-            <section className="admin-identity">
+    /* ========================================================================
+       RENDER
+       ======================================================================== */
 
-                <div className="admin-identity__left">
+    return (
+        <div className="admin-shell">
 
-                    <div className="admin-avatar">
-                        {data?.administrator
-                            ?.full_name
-                            ?.split(" ")
-                            .map(
-                                (name) =>
-                                    name[0]
-                            )
-                            .slice(0, 2)
-                            .join("")
-                            .toUpperCase() ||
-                            "AD"}
-                    </div>
 
-                    <div>
-                        <span className="admin-identity__label">
-                            AUTHENTICATED ADMINISTRATOR
-                        </span>
+            {/* ==================================================================
+                SIDEBAR
+            ================================================================== */}
 
-                        <strong>
-                            {
-                                data
-                                    ?.administrator
-                                    ?.full_name
-                            }
-                        </strong>
+            <aside className="admin-sidebar">
 
-                        <span>
-                            {
-                                data
-                                    ?.administrator
-                                    ?.email
-                            }
-                        </span>
-                    </div>
 
-                </div>
+                <div className="sidebar-brand">
 
-                <div className="admin-identity__right">
-
-                    <div>
-                        <span>ROLE</span>
-                        <strong>
-                            ADMINISTRATOR
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>ENVIRONMENT</span>
-                        <strong>
-                            {system.environment}
-                        </strong>
-                    </div>
-
-                    <div>
-                        <span>VERSION</span>
-                        <strong>
-                            v{system.version}
-                        </strong>
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* ================================================================
-                PLATFORM KPIs
-            ================================================================ */}
-
-            <section className="admin-section">
-
-                <div className="admin-section__heading">
-
-                    <div>
-                        <span className="admin-section__eyebrow">
-                            PLATFORM OVERVIEW
-                        </span>
-
-                        <h2>
-                            Operational Metrics
-                        </h2>
-                    </div>
-
-                    <span className="admin-updated">
-                        Updated{" "}
-                        {formatDate(
-                            data?.generated_at
-                        )}
-                    </span>
-
-                </div>
-
-
-                <div className="admin-kpi-grid">
-
-                    <KpiCard
-                        label="TOTAL USERS"
-                        value={users.total}
-                        secondary={`${users.admins} admins · ${users.farmers} farmers`}
-                        icon="U"
-                    />
-
-                    <KpiCard
-                        label="ACTIVE FARMS"
-                        value={farms.total}
-                        secondary="Registered production locations"
-                        icon="F"
-                    />
-
-                    <KpiCard
-                        label="MONITORED ANIMALS"
-                        value={animals.total}
-                        secondary={`${animals.healthy} healthy · ${animals.at_risk} at risk`}
-                        icon="A"
-                        variant={
-                            animals.at_risk > 0
-                                ? "warning"
-                                : "success"
-                        }
-                    />
-
-                    <KpiCard
-                        label="TELEMETRY RECORDS"
-                        value={
-                            telemetry.total_records
-                        }
-                        secondary="Sensor data points"
-                        icon="T"
-                    />
-
-                    <KpiCard
-                        label="TOTAL ALERTS"
-                        value={alerts.total}
-                        secondary={`${alerts.unresolved} unresolved`}
-                        icon="!"
-                        variant={
-                            alerts.unresolved > 0
-                                ? "warning"
-                                : "success"
-                        }
-                    />
-
-                    <KpiCard
-                        label="CRITICAL ALERTS"
-                        value={alerts.critical}
-                        secondary={`${alerts.warning} warnings`}
-                        icon="!"
-                        variant={
-                            alerts.critical > 0
-                                ? "danger"
-                                : "success"
-                        }
-                    />
-
-                </div>
-
-            </section>
-
-
-            {/* ================================================================
-                SYSTEM HEALTH
-            ================================================================ */}
-
-            <section className="admin-grid">
-
-                <div className="admin-panel">
-
-                    <div className="admin-panel__header">
-
-                        <div>
-                            <span className="admin-section__eyebrow">
-                                INFRASTRUCTURE
-                            </span>
-
-                            <h2>
-                                System Health
-                            </h2>
-                        </div>
-
-                        <span className="admin-panel__code">
-                            SYS-01
-                        </span>
-
-                    </div>
-
-
-                    <div className="admin-health-list">
-
-                        <div className="admin-health-row">
-                            <div>
-                                <strong>
-                                    API SERVICE
-                                </strong>
-
-                                <span>
-                                    FastAPI application
-                                </span>
-                            </div>
-
-                            <StatusIndicator
-                                status={system.api}
-                            />
-                        </div>
-
-
-                        <div className="admin-health-row">
-                            <div>
-                                <strong>
-                                    DATABASE
-                                </strong>
-
-                                <span>
-                                    PostgreSQL persistence
-                                </span>
-                            </div>
-
-                            <StatusIndicator
-                                status={
-                                    system.database
-                                }
-                            />
-                        </div>
-
-
-                        <div className="admin-health-row">
-                            <div>
-                                <strong>
-                                    BLOCKCHAIN
-                                </strong>
-
-                                <span>
-                                    Base network
-                                </span>
-                            </div>
-
-                            <span className="admin-network">
-                                {system.blockchain}
-                            </span>
-                        </div>
-
-
-                        <div className="admin-health-row">
-                            <div>
-                                <strong>
-                                    ENVIRONMENT
-                                </strong>
-
-                                <span>
-                                    Current deployment
-                                </span>
-                            </div>
-
-                            <span className="admin-network">
-                                {system.environment}
-                            </span>
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                {/* ============================================================
-                    USER DISTRIBUTION
-                ============================================================ */}
-
-                <div className="admin-panel">
-
-                    <div className="admin-panel__header">
-
-                        <div>
-                            <span className="admin-section__eyebrow">
-                                ACCESS CONTROL
-                            </span>
-
-                            <h2>
-                                User Distribution
-                            </h2>
-                        </div>
-
-                        <span className="admin-panel__code">
-                            IAM-01
-                        </span>
-
-                    </div>
-
-
-                    <div className="admin-user-total">
-                        <span>
-                            TOTAL PLATFORM USERS
-                        </span>
-
-                        <strong>
-                            {formatNumber(users.total)}
-                        </strong>
-                    </div>
-
-
-                    <div className="admin-distribution">
-
-                        <div className="admin-distribution__row">
-
-                            <div className="admin-distribution__label">
-                                <span className="admin-role-dot admin-role-dot--admin" />
-                                Administrators
-                            </div>
-
-                            <strong>
-                                {users.admins}
-                            </strong>
-
-                        </div>
-
-
-                        <div className="admin-distribution__bar">
-
-                            <span
-                                style={{
-                                    width: `${
-                                        users.total
-                                            ? (users.admins /
-                                                  users.total) *
-                                              100
-                                            : 0
-                                    }%`,
-                                }}
-                            />
-
-                        </div>
-
-
-                        <div className="admin-distribution__row">
-
-                            <div className="admin-distribution__label">
-                                <span className="admin-role-dot admin-role-dot--farmer" />
-                                Farmers
-                            </div>
-
-                            <strong>
-                                {users.farmers}
-                            </strong>
-
-                        </div>
-
-
-                        <div className="admin-distribution__bar">
-
-                            <span
-                                style={{
-                                    width: `${
-                                        users.total
-                                            ? (users.farmers /
-                                                  users.total) *
-                                              100
-                                            : 0
-                                    }%`,
-                                }}
-                            />
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* ================================================================
-                ANIMAL + ALERT INTELLIGENCE
-            ================================================================ */}
-
-            <section className="admin-grid">
-
-                <div className="admin-panel">
-
-                    <div className="admin-panel__header">
-
-                        <div>
-                            <span className="admin-section__eyebrow">
-                                BIOLOGICAL MONITORING
-                            </span>
-
-                            <h2>
-                                Animal Health
-                            </h2>
-                        </div>
-
-                        <span className="admin-panel__code">
-                            BIO-01
-                        </span>
-
-                    </div>
-
-
-                    <div className="admin-health-summary">
-
-                        <div className="admin-health-stat admin-health-stat--healthy">
-                            <span>
-                                HEALTHY
-                            </span>
-
-                            <strong>
-                                {animals.healthy}
-                            </strong>
-
-                            <small>
-                                {animals.total
-                                    ? Math.round(
-                                          (animals.healthy /
-                                              animals.total) *
-                                              100
-                                      )
-                                    : 0}
-                                % of monitored herd
-                            </small>
-                        </div>
-
-
-                        <div className="admin-health-stat admin-health-stat--risk">
-                            <span>
-                                AT RISK
-                            </span>
-
-                            <strong>
-                                {animals.at_risk}
-                            </strong>
-
-                            <small>
-                                Requires attention
-                            </small>
-                        </div>
-
-                    </div>
-
-
-                    <div className="admin-health-bar">
-
-                        <span
-                            style={{
-                                width: `${
-                                    animals.total
-                                        ? (animals.healthy /
-                                              animals.total) *
-                                          100
-                                        : 0
-                                }%`,
-                            }}
-                        />
-
-                    </div>
-
-                </div>
-
-
-                <div className="admin-panel">
-
-                    <div className="admin-panel__header">
-
-                        <div>
-                            <span className="admin-section__eyebrow">
-                                THREAT MONITORING
-                            </span>
-
-                            <h2>
-                                Alert Command
-                            </h2>
-                        </div>
-
-                        <span className="admin-panel__code">
-                            ALT-01
-                        </span>
-
-                    </div>
-
-
-                    <div className="admin-alert-grid">
-
-                        <div className="admin-alert-stat admin-alert-stat--critical">
-                            <span>
-                                CRITICAL
-                            </span>
-
-                            <strong>
-                                {alerts.critical}
-                            </strong>
-                        </div>
-
-                        <div className="admin-alert-stat admin-alert-stat--warning">
-                            <span>
-                                WARNING
-                            </span>
-
-                            <strong>
-                                {alerts.warning}
-                            </strong>
-                        </div>
-
-                        <div className="admin-alert-stat admin-alert-stat--unresolved">
-                            <span>
-                                UNRESOLVED
-                            </span>
-
-                            <strong>
-                                {alerts.unresolved}
-                            </strong>
-                        </div>
-
-                        <div className="admin-alert-stat admin-alert-stat--resolved">
-                            <span>
-                                RESOLVED
-                            </span>
-
-                            <strong>
-                                {alerts.resolved}
-                            </strong>
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* ================================================================
-                PLATFORM STATUS
-            ================================================================ */}
-
-            <section className="admin-platform-status">
-
-                <div className="admin-platform-status__identity">
-
-                    <div className="admin-command-mark admin-command-mark--small">
+                    <div className="sidebar-brand-mark">
                         HS
                     </div>
 
-                    <div>
+                    <div className="sidebar-brand-copy">
+
                         <strong>
-                            HerdSense AI Platform
+                            HerdSense
                         </strong>
 
                         <span>
-                            Production intelligence
-                            infrastructure
+                            AI SYSTEMS
                         </span>
+
                     </div>
 
                 </div>
 
 
-                <div className="admin-platform-status__items">
+                <div className="sidebar-system">
+
+                    <span className="sidebar-status-dot" />
 
                     <div>
-                        <span>API</span>
-                        <StatusIndicator
-                            status={system.api}
-                        />
-                    </div>
-
-                    <div>
-                        <span>DATABASE</span>
-                        <StatusIndicator
-                            status={
-                                system.database
-                            }
-                        />
-                    </div>
-
-                    <div>
-                        <span>NETWORK</span>
 
                         <strong>
-                            {system.blockchain}
+                            SYSTEM ONLINE
                         </strong>
+
+                        <span>
+                            Command infrastructure
+                        </span>
+
                     </div>
 
                 </div>
 
-            </section>
+
+                <nav className="admin-navigation">
+
+                    {navGroups.map(
+                        (group) => (
+
+                            <div
+                                className="nav-group"
+                                key={group.label}
+                            >
+
+                                <span className="nav-group-label">
+                                    {group.label}
+                                </span>
 
 
-            {/* ================================================================
-                FOOTER
-            ================================================================ */}
+                                <div className="nav-group-items">
 
-            <footer className="admin-footer">
+                                    {group.items.map(
+                                        (item) => (
+
+                                            <button
+                                                type="button"
+                                                key={item.path}
+                                                className={
+                                                    `admin-nav-item ${
+                                                        isActive(
+                                                            item.path
+                                                        )
+                                                            ? "active"
+                                                            : ""
+                                                    }`
+                                                }
+                                                onClick={() =>
+                                                    navigate(
+                                                        item.path
+                                                    )
+                                                }
+                                            >
+
+                                                <span className="nav-icon">
+                                                    {item.icon}
+                                                </span>
+
+                                                <span>
+                                                    {item.label}
+                                                </span>
+
+                                            </button>
+
+                                        )
+                                    )}
+
+                                </div>
+
+                            </div>
+
+                        )
+                    )}
+
+                </nav>
+
+
+                <div className="sidebar-bottom">
+
+                    <div className="sidebar-admin">
+
+                        <div className="sidebar-avatar">
+
+                            {administrator.full_name
+                                ?.charAt(0)
+                                ?.toUpperCase() ||
+                                "A"}
+
+                        </div>
+
+                        <div className="sidebar-admin-copy">
+
+                            <strong>
+                                {administrator.full_name ||
+                                    "Administrator"}
+                            </strong>
+
+                            <span>
+                                Administrator
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <button
+                        type="button"
+                        className="sidebar-logout"
+                        onClick={
+                            handleLogout
+                        }
+                    >
+                        Sign out
+                    </button>
+
+                </div>
+
+            </aside>
+
+
+            {/* ==================================================================
+                MAIN
+            ================================================================== */}
+
+            <main className="admin-main">
+
+
+                {/* ==============================================================
+                    TOP BAR
+                ============================================================== */}
+
+                <header className="admin-topbar">
+
+                    <div>
+
+                        <span className="topbar-eyebrow">
+                            HERDSENSE AI
+                            <span>/</span>
+                            ADMINISTRATION
+                        </span>
+
+                        <h1>
+                            System Command Center
+                        </h1>
+
+                    </div>
+
+
+                    <div className="topbar-actions">
+
+                        <div className="topbar-network">
+
+                            <span className="status-dot" />
+
+                            BASE
+
+                            <strong>
+                                {system.blockchain ||
+                                    "SEPOLIA"}
+                            </strong>
+
+                        </div>
+
+
+                        <div className="topbar-time">
+
+                            <span>
+                                LAST SYNC
+                            </span>
+
+                            <strong>
+                                {lastUpdated
+                                    ? lastUpdated.toLocaleTimeString()
+                                    : "--:--:--"}
+                            </strong>
+
+                        </div>
+
+
+                        <button
+                            type="button"
+                            className={
+                                `command-refresh ${
+                                    refreshing
+                                        ? "refreshing"
+                                        : ""
+                                }`
+                            }
+                            onClick={() =>
+                                fetchOverview()
+                            }
+                            disabled={refreshing}
+                        >
+
+                            <span>
+                                ↻
+                            </span>
+
+                            {refreshing
+                                ? "Syncing"
+                                : "Sync"}
+
+                        </button>
+
+                    </div>
+
+                </header>
+
+
+                {/* ==============================================================
+                    CONTENT
+                ============================================================== */}
+
+                <div className="admin-content">
+
+
+                    {/* ==========================================================
+                        MISSION STATUS
+                    ========================================================== */}
+
+                    <section className="command-banner">
+
+                        <div className="banner-left">
+
+                            <div className="banner-live">
+
+                                <span className="status-dot" />
+
+                                LIVE OPERATIONS
+
+                            </div>
+
+                            <h2>
+                                Platform intelligence
+                                <span>
+                                    at a glance.
+                                </span>
+                            </h2>
+
+                            <p>
+                                Real-time operational visibility
+                                across the HerdSense AI network.
+                            </p>
+
+                        </div>
+
+
+                        <div className="banner-metrics">
+
+                            <div>
+
+                                <span>
+                                    ENVIRONMENT
+                                </span>
+
+                                <strong>
+                                    {system.environment ||
+                                        "DEVELOPMENT"}
+                                </strong>
+
+                            </div>
+
+                            <div>
+
+                                <span>
+                                    VERSION
+                                </span>
+
+                                <strong>
+                                    v{system.version ||
+                                        "1.0.0"}
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+
+                    {/* ==========================================================
+                        HEALTH
+                    ========================================================== */}
+
+                    <section className="command-panel health-command-panel">
+
+                        <div className="command-panel-header">
+
+                            <div>
+
+                                <span>
+                                    SYSTEM HEALTH
+                                </span>
+
+                                <h2>
+                                    Operational integrity
+                                </h2>
+
+                            </div>
+
+                            <div className="panel-live">
+                                LIVE
+                            </div>
+
+                        </div>
+
+
+                        <div className="health-command-body">
+
+
+                            <div className="health-ring-wrapper">
+
+                                <svg
+                                    className={
+                                        `health-ring health-${health.state}`
+                                    }
+                                    viewBox="0 0 220 220"
+                                >
+
+                                    <circle
+                                        className="health-ring-track"
+                                        cx="110"
+                                        cy="110"
+                                        r={ringRadius}
+                                    />
+
+                                    <circle
+                                        className="health-ring-progress"
+                                        cx="110"
+                                        cy="110"
+                                        r={ringRadius}
+                                        strokeDasharray={
+                                            ringCircumference
+                                        }
+                                        strokeDashoffset={
+                                            ringOffset
+                                        }
+                                    />
+
+                                </svg>
+
+
+                                <div className="health-ring-center">
+
+                                    <strong>
+                                        {health.percentage}
+                                        <small>
+                                            %
+                                        </small>
+                                    </strong>
+
+                                    <span>
+                                        HEALTH INDEX
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+
+                            <div className="health-command-summary">
+
+                                <div className="health-command-status">
+
+                                    <span
+                                        className={
+                                            `status-dot ${
+                                                health.state
+                                            }`
+                                        }
+                                    />
+
+                                    <strong>
+                                        {health.label}
+                                    </strong>
+
+                                </div>
+
+                                <p>
+                                    {health.description}
+                                </p>
+
+
+                                <div className="health-check-grid">
+
+                                    <HealthCheck
+                                        label="API"
+                                        value={
+                                            system.api ===
+                                            "healthy"
+                                                ? "OPERATIONAL"
+                                                : "OFFLINE"
+                                        }
+                                        healthy={
+                                            system.api ===
+                                            "healthy"
+                                        }
+                                    />
+
+                                    <HealthCheck
+                                        label="DATABASE"
+                                        value={
+                                            system.database ===
+                                            "healthy"
+                                                ? "OPERATIONAL"
+                                                : "OFFLINE"
+                                        }
+                                        healthy={
+                                            system.database ===
+                                            "healthy"
+                                        }
+                                    />
+
+                                    <HealthCheck
+                                        label="TELEMETRY"
+                                        value="STREAMING"
+                                        healthy
+                                    />
+
+                                    <HealthCheck
+                                        label="BASE NETWORK"
+                                        value={
+                                            system.blockchain ||
+                                            "CONNECTED"
+                                        }
+                                        healthy
+                                    />
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+
+                    {/* ==========================================================
+                        ALERTS
+                    ========================================================== */}
+
+                    <section className="command-panel alerts-command-panel">
+
+                        <div className="command-panel-header">
+
+                            <div>
+
+                                <span>
+                                    ALERT CENTER
+                                </span>
+
+                                <h2>
+                                    Active incidents
+                                </h2>
+
+                            </div>
+
+                            <button
+                                type="button"
+                                className="text-action"
+                                onClick={() =>
+                                    navigate(
+                                        "/alerts"
+                                    )
+                                }
+                            >
+                                Open center →
+                            </button>
+
+                        </div>
+
+
+                        <div className="alert-command-total">
+
+                            <strong>
+                                {alerts.unresolved ??
+                                    0}
+                            </strong>
+
+                            <span>
+                                unresolved
+                            </span>
+
+                        </div>
+
+
+                        <div className="alert-command-grid">
+
+                            <AlertMetric
+                                label="CRITICAL"
+                                value={
+                                    alerts.critical ??
+                                    0
+                                }
+                                type="critical"
+                            />
+
+                            <AlertMetric
+                                label="WARNING"
+                                value={
+                                    alerts.warning ??
+                                    0
+                                }
+                                type="warning"
+                            />
+
+                            <AlertMetric
+                                label="RESOLVED"
+                                value={
+                                    alerts.resolved ??
+                                    0
+                                }
+                                type="resolved"
+                            />
+
+                        </div>
+
+                    </section>
+
+
+                    {/* ==========================================================
+                        KPI ROW
+                    ========================================================== */}
+
+                    <KpiCard
+                        label="PLATFORM USERS"
+                        title="User population"
+                        value={
+                            users.total ?? 0
+                        }
+                        description="Registered platform users"
+                        footerLeft="ADMINS"
+                        footerLeftValue={
+                            users.admins ?? 0
+                        }
+                        footerRight="FARMERS"
+                        footerRightValue={
+                            users.farmers ?? 0
+                        }
+                    />
+
+
+                    <KpiCard
+                        label="FARM NETWORK"
+                        title="Registered farms"
+                        value={
+                            farms.total ?? 0
+                        }
+                        description="Connected farm operations"
+                        footerLeft="NETWORK"
+                        footerLeftValue="ACTIVE"
+                        footerRight="STATUS"
+                        footerRightValue="ONLINE"
+                    />
+
+
+                    <KpiCard
+                        label="TELEMETRY"
+                        title="Sensor intelligence"
+                        value={
+                            telemetry.total_records ??
+                            0
+                        }
+                        description="Telemetry records collected"
+                        footerLeft="PIPELINE"
+                        footerLeftValue="LIVE"
+                        footerRight="STREAM"
+                        footerRightValue="ACTIVE"
+                    />
+
+
+                    <KpiCard
+                        label="ANIMAL INTELLIGENCE"
+                        title="Monitored livestock"
+                        value={
+                            animals.total ?? 0
+                        }
+                        description="Animals under active monitoring"
+                        footerLeft="HEALTHY"
+                        footerLeftValue={
+                            animals.healthy ?? 0
+                        }
+                        footerRight="AT RISK"
+                        footerRightValue={
+                            animals.at_risk ?? 0
+                        }
+                    />
+
+
+                    {/* ==========================================================
+                        ANIMAL HEALTH
+                    ========================================================== */}
+
+                    <section className="command-panel animal-health-panel">
+
+                        <div className="command-panel-header">
+
+                            <div>
+
+                                <span>
+                                    ANIMAL INTELLIGENCE
+                                </span>
+
+                                <h2>
+                                    Population health
+                                </h2>
+
+                            </div>
+
+                            <button
+                                type="button"
+                                className="text-action"
+                                onClick={() =>
+                                    navigate(
+                                        "/animals"
+                                    )
+                                }
+                            >
+                                View animals →
+                            </button>
+
+                        </div>
+
+
+                        <div className="population-health">
+
+                            <div className="population-total">
+
+                                <strong>
+                                    {animals.total ??
+                                        0}
+                                </strong>
+
+                                <span>
+                                    monitored animals
+                                </span>
+
+                            </div>
+
+
+                            <div className="population-bars">
+
+                                <PopulationBar
+                                    label="Healthy"
+                                    value={
+                                        animals.healthy ??
+                                        0
+                                    }
+                                    total={
+                                        animals.total ??
+                                        0
+                                    }
+                                />
+
+                                <PopulationBar
+                                    label="At risk"
+                                    value={
+                                        animals.at_risk ??
+                                        0
+                                    }
+                                    total={
+                                        animals.total ??
+                                        0
+                                    }
+                                    risk
+                                />
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+
+                    {/* ==========================================================
+                        INFRASTRUCTURE
+                    ========================================================== */}
+
+                    <section className="command-panel infrastructure-panel">
+
+                        <div className="command-panel-header">
+
+                            <div>
+
+                                <span>
+                                    INFRASTRUCTURE
+                                </span>
+
+                                <h2>
+                                    Platform systems
+                                </h2>
+
+                            </div>
+
+                        </div>
+
+
+                        <div className="infrastructure-grid">
+
+                            <Infrastructure
+                                label="API"
+                                value={
+                                    system.api ===
+                                    "healthy"
+                                        ? "HEALTHY"
+                                        : "OFFLINE"
+                                }
+                                healthy={
+                                    system.api ===
+                                    "healthy"
+                                }
+                            />
+
+                            <Infrastructure
+                                label="DATABASE"
+                                value={
+                                    system.database ===
+                                    "healthy"
+                                        ? "HEALTHY"
+                                        : "OFFLINE"
+                                }
+                                healthy={
+                                    system.database ===
+                                    "healthy"
+                                }
+                            />
+
+                            <Infrastructure
+                                label="BASE"
+                                value={
+                                    system.blockchain ||
+                                    "CONNECTED"
+                                }
+                                healthy
+                            />
+
+                            <Infrastructure
+                                label="VERSION"
+                                value={
+                                    system.version ||
+                                    "1.0.0"
+                                }
+                                healthy
+                            />
+
+                        </div>
+
+                    </section>
+
+
+                </div>
+
+
+                {/* ==============================================================
+                    FOOTER
+                ============================================================== */}
+
+                <footer className="admin-footer">
+
+                    <span>
+                        HERDSENSE AI / ADMINISTRATION
+                    </span>
+
+                    <span>
+                        SECURE COMMAND ENVIRONMENT
+                    </span>
+
+                    <span>
+                        © 2026
+                    </span>
+
+                </footer>
+
+            </main>
+
+        </div>
+    );
+}
+
+
+/* ============================================================================
+   HEALTH CHECK
+   ============================================================================ */
+
+function HealthCheck({
+    label,
+    value,
+    healthy,
+}) {
+
+    return (
+        <div className="health-check">
+
+            <span>
+                {label}
+            </span>
+
+            <strong
+                className={
+                    healthy
+                        ? "healthy"
+                        : "offline"
+                }
+            >
+
+                <i
+                    className={
+                        healthy
+                            ? "healthy"
+                            : "offline"
+                    }
+                />
+
+                {value}
+
+            </strong>
+
+        </div>
+    );
+}
+
+
+/* ============================================================================
+   ALERT METRIC
+   ============================================================================ */
+
+function AlertMetric({
+    label,
+    value,
+    type,
+}) {
+
+    return (
+        <div
+            className={
+                `alert-metric ${type}`
+            }
+        >
+
+            <span>
+                {label}
+            </span>
+
+            <strong>
+                {value}
+            </strong>
+
+        </div>
+    );
+}
+
+
+/* ============================================================================
+   KPI CARD
+   ============================================================================ */
+
+function KpiCard({
+    label,
+    title,
+    value,
+    description,
+    footerLeft,
+    footerLeftValue,
+    footerRight,
+    footerRightValue,
+}) {
+
+    return (
+        <section className="command-panel kpi-command-panel">
+
+            <div className="command-panel-header">
+
+                <div>
+
+                    <span>
+                        {label}
+                    </span>
+
+                    <h2>
+                        {title}
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <div className="kpi-value">
+                {value}
+            </div>
+
+            <p className="kpi-description">
+                {description}
+            </p>
+
+
+            <div className="kpi-footer">
+
+                <div>
+
+                    <span>
+                        {footerLeft}
+                    </span>
+
+                    <strong>
+                        {footerLeftValue}
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>
+                        {footerRight}
+                    </span>
+
+                    <strong>
+                        {footerRightValue}
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </section>
+    );
+}
+
+
+/* ============================================================================
+   POPULATION BAR
+   ============================================================================ */
+
+function PopulationBar({
+    label,
+    value,
+    total,
+    risk = false,
+}) {
+
+    const percentage =
+        total > 0
+            ? Math.min(
+                100,
+                Math.round(
+                    (value / total) *
+                    100
+                )
+            )
+            : 0;
+
+
+    return (
+        <div className="population-row">
+
+            <div className="population-row-header">
 
                 <span>
-                    HERDSENSE AI ADMIN CONTROL ROOM
+                    {label}
                 </span>
 
-                <span>
-                    Secure administrative interface
-                </span>
+                <strong>
+                    {value}
+                </strong>
 
-                <span>
-                    v{system.version}
-                </span>
+            </div>
 
-            </footer>
 
-        </main>
+            <div
+                className={
+                    `population-track ${
+                        risk
+                            ? "risk"
+                            : ""
+                    }`
+                }
+            >
+
+                <span
+                    style={{
+                        width:
+                            `${percentage}%`,
+                    }}
+                />
+
+            </div>
+
+
+            <small>
+                {percentage}% of population
+            </small>
+
+        </div>
+    );
+}
+
+
+/* ============================================================================
+   INFRASTRUCTURE
+   ============================================================================ */
+
+function Infrastructure({
+    label,
+    value,
+    healthy,
+}) {
+
+    return (
+        <div className="infrastructure-item">
+
+            <div className="infrastructure-label">
+
+                <span
+                    className={
+                        `status-dot ${
+                            healthy
+                                ? "healthy"
+                                : "critical"
+                        }`
+                    }
+                />
+
+                {label}
+
+            </div>
+
+            <strong
+                className={
+                    healthy
+                        ? "healthy"
+                        : "offline"
+                }
+            >
+                {value}
+            </strong>
+
+        </div>
     );
 }

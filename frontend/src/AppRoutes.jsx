@@ -18,9 +18,9 @@ import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
 
 
-/* ==========================================================================
+/* ============================================================================
    PROTECTED ROUTE
-   ========================================================================== */
+   ============================================================================ */
 
 function ProtectedRoute({ children }) {
     const token = localStorage.getItem("access_token");
@@ -38,12 +38,20 @@ function ProtectedRoute({ children }) {
 }
 
 
-/* ==========================================================================
+/* ============================================================================
    ADMIN ROUTE
-   ========================================================================== */
+   ============================================================================ */
 
 function AdminRoute({ children }) {
-    const token = localStorage.getItem("access_token");
+    const token =
+        localStorage.getItem("access_token");
+
+    const role =
+        localStorage.getItem("user_role");
+
+    /*
+     * No authentication
+     */
 
     if (!token) {
         return (
@@ -54,26 +62,12 @@ function AdminRoute({ children }) {
         );
     }
 
+
     /*
-     * The backend remains the authoritative security layer.
-     *
-     * We also check the locally stored user object here so that
-     * ordinary farmers do not even enter the admin interface.
+     * Authenticated but not administrator
      */
 
-    let user = null;
-
-    try {
-        const storedUser = localStorage.getItem("user");
-
-        if (storedUser) {
-            user = JSON.parse(storedUser);
-        }
-    } catch {
-        user = null;
-    }
-
-    if (!user || user.role !== "admin") {
+    if (role !== "admin") {
         return (
             <Navigate
                 to="/dashboard"
@@ -82,13 +76,14 @@ function AdminRoute({ children }) {
         );
     }
 
+
     return children;
 }
 
 
-/* ==========================================================================
+/* ============================================================================
    APPLICATION ROUTES
-   ========================================================================== */
+   ============================================================================ */
 
 export default function AppRoutes() {
     return (
@@ -101,6 +96,20 @@ export default function AppRoutes() {
             <Route
                 path="/login"
                 element={<Login />}
+            />
+
+
+            {/* ==================================================================
+                ADMIN COMMAND CENTER
+            ================================================================== */}
+
+            <Route
+                path="/admin"
+                element={
+                    <AdminRoute>
+                        <AdminDashboard />
+                    </AdminRoute>
+                }
             />
 
 
@@ -233,20 +242,6 @@ export default function AppRoutes() {
                     <ProtectedRoute>
                         <Settings />
                     </ProtectedRoute>
-                }
-            />
-
-
-            {/* ==================================================================
-                ADMIN CONTROL ROOM
-            ================================================================== */}
-
-            <Route
-                path="/admin"
-                element={
-                    <AdminRoute>
-                        <AdminDashboard />
-                    </AdminRoute>
                 }
             />
 

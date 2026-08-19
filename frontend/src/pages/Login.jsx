@@ -1,30 +1,61 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import api from "../api/api";
 import "./Login.css";
 
+
 export default function Login() {
+
     const navigate = useNavigate();
 
-    const [mode, setMode] = useState("login");
+    const [mode, setMode] =
+        useState("login");
 
-    const [email, setEmail] = useState("farmer@herdsense.ai");
-    const [password, setPassword] = useState("");
-    const [fullName, setFullName] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
+    const [email, setEmail] =
+        useState("farmer@herdsense.ai");
 
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
+    const [password, setPassword] =
+        useState("");
+
+    const [fullName, setFullName] =
+        useState("");
+
+    const [confirmPassword, setConfirmPassword] =
+        useState("");
+
+    const [loading, setLoading] =
+        useState(false);
+
+    const [error, setError] =
+        useState("");
+
+    const [success, setSuccess] =
+        useState("");
+
+    const [showPassword, setShowPassword] =
+        useState(false);
+
     const [showConfirmPassword, setShowConfirmPassword] =
         useState(false);
 
-    const [theme, setTheme] = useState(() => {
-        return localStorage.getItem("herdsense-theme") || "dark";
-    });
+
+    const [theme, setTheme] =
+        useState(() => {
+            return (
+                localStorage.getItem(
+                    "herdsense-theme"
+                ) || "dark"
+            );
+        });
+
+
+    /* ========================================================================
+       THEME
+       ======================================================================== */
 
     useEffect(() => {
+
         document.documentElement.setAttribute(
             "data-theme",
             theme
@@ -34,45 +65,72 @@ export default function Login() {
             "herdsense-theme",
             theme
         );
+
     }, [theme]);
 
+
     const toggleTheme = () => {
+
         setTheme((current) =>
-            current === "dark" ? "light" : "dark"
+            current === "dark"
+                ? "light"
+                : "dark"
         );
+
     };
 
+
+    /* ========================================================================
+       MODE
+       ======================================================================== */
+
     const switchMode = (newMode) => {
+
         setMode(newMode);
+
         setError("");
         setSuccess("");
 
-        if (newMode === "login") {
-            setPassword("");
-            setConfirmPassword("");
-        }
+        setPassword("");
+        setConfirmPassword("");
+
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+
     };
 
+
+    /* ========================================================================
+       LOGIN
+       ======================================================================== */
+
     const handleLogin = async (e) => {
+
         e.preventDefault();
 
-        if (!email || !password) {
+        setError("");
+        setSuccess("");
+
+        if (!email.trim() || !password) {
+
             setError(
                 "Enter your email and password."
             );
+
             return;
         }
 
         setLoading(true);
-        setError("");
-        setSuccess("");
+
 
         try {
-            const formData = new URLSearchParams();
+
+            const formData =
+                new URLSearchParams();
 
             formData.append(
                 "username",
-                email
+                email.trim().toLowerCase()
             );
 
             formData.append(
@@ -80,62 +138,134 @@ export default function Login() {
                 password
             );
 
-            const response = await api.post(
-                "/auth/login",
-                formData,
-                {
-                    headers: {
-                        "Content-Type":
-                            "application/x-www-form-urlencoded",
-                    },
-                }
-            );
+
+            const response =
+                await api.post(
+                    "/auth/login",
+                    formData,
+                    {
+                        headers: {
+                            "Content-Type":
+                                "application/x-www-form-urlencoded",
+                        },
+                    }
+                );
+
 
             const token =
                 response.data?.access_token;
 
+
             if (!token) {
+
                 throw new Error(
-                    "No access token received from server."
+                    "Authentication succeeded but no access token was returned."
                 );
+
             }
 
-            /*
-             * Store the primary token used by
-             * the current HerdSense AI API layer.
-             */
+
+            const authenticatedUser =
+                response.data?.user;
+
+
+            if (!authenticatedUser) {
+
+                throw new Error(
+                    "Authentication succeeded but no user profile was returned."
+                );
+
+            }
+
+
+            /* ==================================================================
+               STORE TOKEN
+            ================================================================== */
+
             localStorage.setItem(
                 "access_token",
                 token
             );
 
-            /*
-             * Compatibility with older
-             * dashboard code.
-             */
             localStorage.setItem(
                 "token",
                 token
             );
 
-            console.log(
-                "HerdSense AI login successful"
+
+            /* ==================================================================
+               STORE USER
+            ================================================================== */
+
+            localStorage.setItem(
+                "herdsense_user",
+                JSON.stringify(
+                    authenticatedUser
+                )
             );
+
+
+            /* ==================================================================
+               STORE ROLE
+            ================================================================== */
+
+            localStorage.setItem(
+                "user_role",
+                authenticatedUser.role
+            );
+
+
+            console.log(
+                "HerdSense AI authentication successful:",
+                authenticatedUser
+            );
+
+
+            /* ==================================================================
+               ROLE ROUTING
+            ================================================================== */
+
+            if (
+                authenticatedUser.role
+                    ?.toLowerCase() ===
+                "admin"
+            ) {
+
+                navigate(
+                    "/admin",
+                    {
+                        replace: true,
+                    }
+                );
+
+                return;
+            }
+
+
+            /* ==================================================================
+               FARMER
+            ================================================================== */
 
             navigate(
                 "/dashboard",
-                { replace: true }
+                {
+                    replace: true,
+                }
             );
 
         } catch (err) {
+
             console.error(
                 "Login error:",
                 err
             );
 
+
             if (
-                err.response?.status === 401
+                err.response?.status ===
+                401
             ) {
+
                 setError(
                     "Invalid email or password."
                 );
@@ -143,6 +273,7 @@ export default function Login() {
             } else if (
                 err.response?.data?.detail
             ) {
+
                 setError(
                     typeof err.response.data.detail ===
                         "string"
@@ -150,25 +281,42 @@ export default function Login() {
                         : "Unable to authenticate."
                 );
 
-            } else if (err.message) {
-                setError(err.message);
+            } else if (
+                err.message
+            ) {
+
+                setError(
+                    err.message
+                );
 
             } else {
+
                 setError(
                     "Login failed. Please check your connection and try again."
                 );
+
             }
 
         } finally {
+
             setLoading(false);
+
         }
+
     };
 
+
+    /* ========================================================================
+       REGISTER
+       ======================================================================== */
+
     const handleRegister = async (e) => {
+
         e.preventDefault();
 
         setError("");
         setSuccess("");
+
 
         if (
             !fullName.trim() ||
@@ -176,56 +324,62 @@ export default function Login() {
             !password ||
             !confirmPassword
         ) {
+
             setError(
                 "Complete all required fields."
             );
+
             return;
         }
 
+
         if (password.length < 8) {
+
             setError(
                 "Password must be at least 8 characters."
             );
+
             return;
         }
 
-        if (password !== confirmPassword) {
+
+        if (
+            password !==
+            confirmPassword
+        ) {
+
             setError(
                 "Passwords do not match."
             );
+
             return;
         }
 
+
         setLoading(true);
 
+
         try {
-            const response = await api.post(
+
+            await api.post(
                 "/auth/register",
                 {
                     full_name:
                         fullName.trim(),
+
                     email:
-                        email.trim().toLowerCase(),
+                        email.trim()
+                            .toLowerCase(),
+
                     password,
                 }
             );
 
-            console.log(
-                "HerdSense AI registration successful:",
-                response.data
-            );
 
-            /*
-             * Registration is successful.
-             *
-             * We intentionally do not automatically
-             * log the user in here because the current
-             * backend registration endpoint is separate
-             * from the JWT login endpoint.
-             */
             setSuccess(
                 "Account created successfully. You can now sign in."
             );
+
 
             setMode("login");
 
@@ -233,31 +387,17 @@ export default function Login() {
             setConfirmPassword("");
 
         } catch (err) {
+
             console.error(
                 "Registration error:",
                 err
             );
 
+
             if (
-                err.response?.status === 409
-            ) {
-                setError(
-                    "An account with this email already exists."
-                );
-
-            } else if (
-                err.response?.status === 400
-            ) {
-                setError(
-                    typeof err.response?.data?.detail ===
-                        "string"
-                        ? err.response.data.detail
-                        : "Unable to create the account."
-                );
-
-            } else if (
                 err.response?.data?.detail
             ) {
+
                 setError(
                     typeof err.response.data.detail ===
                         "string"
@@ -265,29 +405,39 @@ export default function Login() {
                         : "Unable to create the account."
                 );
 
-            } else if (err.message) {
-                setError(err.message);
-
             } else {
+
                 setError(
                     "Registration failed. Please check your connection and try again."
                 );
+
             }
 
         } finally {
+
             setLoading(false);
+
         }
+
     };
+
+
+    /* ========================================================================
+       UI
+       ======================================================================== */
 
     return (
         <div className="login-page">
 
-            {/* TECHNICAL BACKGROUND */}
             <div className="login-grid" />
+
             <div className="login-glow login-glow-one" />
+
             <div className="login-glow login-glow-two" />
 
+
             {/* HEADER */}
+
             <header className="login-header">
 
                 <div className="login-brand">
@@ -297,6 +447,7 @@ export default function Login() {
                     </div>
 
                     <div className="login-brand-text">
+
                         <strong>
                             HerdSense AI
                         </strong>
@@ -304,16 +455,18 @@ export default function Login() {
                         <span>
                             Livestock intelligence platform
                         </span>
+
                     </div>
 
                 </div>
+
 
                 <button
                     type="button"
                     className="theme-toggle"
                     onClick={toggleTheme}
-                    aria-label="Toggle theme"
                 >
+
                     <span className="theme-icon">
                         {theme === "dark"
                             ? "☼"
@@ -323,20 +476,28 @@ export default function Login() {
                     {theme === "dark"
                         ? "Light"
                         : "Dark"}
+
                 </button>
 
             </header>
 
+
             {/* MAIN */}
+
             <main className="login-main">
 
-                {/* LEFT SIDE */}
+                {/* HERO */}
+
                 <section className="login-hero">
 
                     <div className="system-status">
+
                         <span className="system-status-dot" />
+
                         SYSTEM ONLINE
+
                     </div>
+
 
                     <h1>
                         Intelligence
@@ -344,11 +505,14 @@ export default function Login() {
                         for every animal.
                     </h1>
 
+
                     <p className="hero-description">
-                        Monitor livestock health, telemetry
-                        and alerts from a single operational
-                        command center.
+                        Monitor livestock health,
+                        telemetry and alerts from
+                        a single operational command
+                        center.
                     </p>
+
 
                     <div className="feature-list">
 
@@ -359,6 +523,7 @@ export default function Login() {
                             </span>
 
                             <div>
+
                                 <strong>
                                     Live telemetry
                                 </strong>
@@ -366,9 +531,11 @@ export default function Login() {
                                 <span>
                                     Continuous sensor monitoring
                                 </span>
+
                             </div>
 
                         </div>
+
 
                         <div className="feature-item">
 
@@ -377,6 +544,7 @@ export default function Login() {
                             </span>
 
                             <div>
+
                                 <strong>
                                     Health intelligence
                                 </strong>
@@ -384,9 +552,11 @@ export default function Login() {
                                 <span>
                                     Detect abnormal animal conditions
                                 </span>
+
                             </div>
 
                         </div>
+
 
                         <div className="feature-item">
 
@@ -395,6 +565,7 @@ export default function Login() {
                             </span>
 
                             <div>
+
                                 <strong>
                                     Operational alerts
                                 </strong>
@@ -402,6 +573,7 @@ export default function Login() {
                                 <span>
                                     Respond before problems escalate
                                 </span>
+
                             </div>
 
                         </div>
@@ -410,41 +582,48 @@ export default function Login() {
 
                 </section>
 
-                {/* AUTH CARD */}
+
+                {/* AUTH */}
+
                 <section className="login-card">
 
                     <div className="login-card-inner">
 
                         <div className="login-eyebrow">
+
                             {mode === "login"
                                 ? "SECURE ACCESS"
                                 : "FARMER REGISTRATION"}
+
                         </div>
 
+
                         <h2>
+
                             {mode === "login"
                                 ? "Welcome back."
                                 : "Create your account."}
+
                         </h2>
 
+
                         <p className="login-subtitle">
+
                             {mode === "login"
                                 ? "Sign in to your HerdSense command center."
                                 : "Create your HerdSense AI account to begin monitoring your livestock."}
+
                         </p>
+
 
                         {mode === "login" ? (
 
-                            /* =========================
-                             * LOGIN FORM
-                             * ========================= */
                             <form
                                 onSubmit={
                                     handleLogin
                                 }
                             >
 
-                                {/* EMAIL */}
                                 <div className="field">
 
                                     <label htmlFor="email">
@@ -475,7 +654,7 @@ export default function Login() {
 
                                 </div>
 
-                                {/* PASSWORD */}
+
                                 <div className="field">
 
                                     <label htmlFor="password">
@@ -525,33 +704,41 @@ export default function Login() {
 
                                 </div>
 
-                                {/* ERROR */}
+
                                 {error && (
+
                                     <div className="login-error">
+
                                         <span>!</span>
+
                                         <p>
                                             {error}
                                         </p>
+
                                     </div>
+
                                 )}
 
-                                {/* SUCCESS */}
+
                                 {success && (
+
                                     <div className="login-success">
+
                                         <span>✓</span>
+
                                         <p>
                                             {success}
                                         </p>
+
                                     </div>
+
                                 )}
 
-                                {/* SUBMIT */}
+
                                 <button
                                     type="submit"
                                     className="login-submit"
-                                    disabled={
-                                        loading
-                                    }
+                                    disabled={loading}
                                 >
 
                                     <span>
@@ -568,7 +755,7 @@ export default function Login() {
 
                                 </button>
 
-                                {/* REGISTER LINK */}
+
                                 <div className="auth-switch">
 
                                     <span>
@@ -593,16 +780,12 @@ export default function Login() {
 
                         ) : (
 
-                            /* =========================
-                             * REGISTRATION FORM
-                             * ========================= */
                             <form
                                 onSubmit={
                                     handleRegister
                                 }
                             >
 
-                                {/* FULL NAME */}
                                 <div className="field">
 
                                     <label htmlFor="fullName">
@@ -612,7 +795,7 @@ export default function Login() {
                                     <div className="input-shell">
 
                                         <span className="input-icon">
-                                            ●
+                                            ◉
                                         </span>
 
                                         <input
@@ -633,7 +816,7 @@ export default function Login() {
 
                                 </div>
 
-                                {/* EMAIL */}
+
                                 <div className="field">
 
                                     <label htmlFor="registerEmail">
@@ -664,7 +847,7 @@ export default function Login() {
 
                                 </div>
 
-                                {/* PASSWORD */}
+
                                 <div className="field">
 
                                     <label htmlFor="registerPassword">
@@ -714,7 +897,7 @@ export default function Login() {
 
                                 </div>
 
-                                {/* CONFIRM PASSWORD */}
+
                                 <div className="field">
 
                                     <label htmlFor="confirmPassword">
@@ -766,33 +949,41 @@ export default function Login() {
 
                                 </div>
 
-                                {/* ERROR */}
+
                                 {error && (
+
                                     <div className="login-error">
+
                                         <span>!</span>
+
                                         <p>
                                             {error}
                                         </p>
+
                                     </div>
+
                                 )}
 
-                                {/* SUCCESS */}
+
                                 {success && (
+
                                     <div className="login-success">
+
                                         <span>✓</span>
+
                                         <p>
                                             {success}
                                         </p>
+
                                     </div>
+
                                 )}
 
-                                {/* SUBMIT */}
+
                                 <button
                                     type="submit"
                                     className="login-submit"
-                                    disabled={
-                                        loading
-                                    }
+                                    disabled={loading}
                                 >
 
                                     <span>
@@ -809,7 +1000,7 @@ export default function Login() {
 
                                 </button>
 
-                                {/* LOGIN LINK */}
+
                                 <div className="auth-switch">
 
                                     <span>
@@ -834,6 +1025,7 @@ export default function Login() {
 
                         )}
 
+
                         <div className="secure-note">
 
                             <span className="secure-check">
@@ -850,7 +1042,7 @@ export default function Login() {
 
             </main>
 
-            {/* FOOTER */}
+
             <footer className="login-footer">
 
                 <span>
