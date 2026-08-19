@@ -9,22 +9,20 @@ import {
 } from "react-router-dom";
 
 import AppShell from "../components/AppShell";
-import MapView from "../components/Map/MapView";
+import MapView from "../components/map/MapView";
 import api from "../api/api";
 
 import "./Map.css";
 
-
 /* ==========================================================================
    CONFIGURATION
-   ========================================================================== */
+========================================================================== */
 
 const REFRESH_INTERVAL = 15000;
 
-
 /* ==========================================================================
    HELPERS
-   ========================================================================== */
+========================================================================== */
 
 function normalizeArray(data) {
     if (Array.isArray(data)) {
@@ -46,20 +44,9 @@ function normalizeArray(data) {
     return [];
 }
 
-
-function getAnimalId(animal) {
-    return (
-        animal?.id ??
-        animal?.animal_id ??
-        animal?.animalId ??
-        null
-    );
-}
-
-
 /* ==========================================================================
    MAP PAGE
-   ========================================================================== */
+========================================================================== */
 
 export default function Map() {
     const navigate = useNavigate();
@@ -74,10 +61,9 @@ export default function Map() {
 
     const [apiOnline, setApiOnline] = useState(false);
 
-
     /* ======================================================================
        LOAD REGISTERED ANIMALS
-       ====================================================================== */
+    ====================================================================== */
 
     const loadAnimals = useCallback(
         async (isRefresh = false) => {
@@ -119,14 +105,6 @@ export default function Map() {
                         response.data
                     );
 
-                /*
-                 * Every animal returned here is considered
-                 * a registered animal.
-                 *
-                 * MapView will later merge these records
-                 * with live telemetry.
-                 */
-
                 setAnimals(
                     registeredAnimals
                 );
@@ -146,6 +124,10 @@ export default function Map() {
                         "access_token"
                     );
 
+                    localStorage.removeItem(
+                        "token"
+                    );
+
                     navigate("/login", {
                         replace: true,
                     });
@@ -160,16 +142,16 @@ export default function Map() {
                 );
             } finally {
                 setLoading(false);
+
                 setRefreshing(false);
             }
         },
         [navigate]
     );
 
-
     /* ======================================================================
        INITIAL LOAD + PERIODIC REFRESH
-       ====================================================================== */
+    ====================================================================== */
 
     useEffect(() => {
         loadAnimals();
@@ -183,10 +165,9 @@ export default function Map() {
             clearInterval(interval);
     }, [loadAnimals]);
 
-
     /* ======================================================================
        RENDER
-       ====================================================================== */
+    ====================================================================== */
 
     return (
         <AppShell>
@@ -194,21 +175,22 @@ export default function Map() {
             <div className="map-page">
 
                 {/* ==========================================================
-                   PAGE STATUS
-                   ========================================================== */}
+                   ERROR
+                ========================================================== */}
 
                 {error && (
                     <div className="map-page__error">
+
                         <span className="map-page__error-dot" />
 
                         {error}
+
                     </div>
                 )}
 
-
                 {/* ==========================================================
                    MAP
-                   ========================================================== */}
+                ========================================================== */}
 
                 <MapView
                     animals={animals}
@@ -216,10 +198,9 @@ export default function Map() {
                     showHeader={true}
                 />
 
-
                 {/* ==========================================================
-                   MAP PAGE STATUS BAR
-                   ========================================================== */}
+                   STATUS BAR
+                ========================================================== */}
 
                 <div className="map-page__status-bar">
 
@@ -232,13 +213,14 @@ export default function Map() {
                                     : "is-offline"
                             }`}
                         >
+
                             <span />
 
                             {apiOnline
                                 ? "API ONLINE"
                                 : "API OFFLINE"}
-                        </span>
 
+                        </span>
 
                         <span className="map-page__registered">
 
@@ -251,7 +233,6 @@ export default function Map() {
                         </span>
 
                     </div>
-
 
                     <div className="map-page__status-group">
 

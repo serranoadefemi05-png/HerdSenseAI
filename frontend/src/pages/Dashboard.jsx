@@ -29,11 +29,24 @@ import {
     useState,
 } from "react";
 
-import { useNavigate } from "react-router-dom";
+import {
+    useNavigate,
+} from "react-router-dom";
 
 import AppShell from "../components/AppShell";
-import MapView from "../components/Map/MapView";
+
+/*
+ * IMPORTANT:
+ * The actual directory is:
+ *
+ * src/components/map/MapView.jsx
+ *
+ * Linux/Render is case-sensitive.
+ */
+import MapView from "../components/map/MapView";
+
 import api from "../api/api";
+
 import useTelemetrySocket from "../hooks/useTelemetrySocket";
 
 import "./Dashboard.css";
@@ -54,7 +67,9 @@ function getNumber(...values) {
             value !== undefined &&
             value !== null &&
             value !== "" &&
-            Number.isFinite(Number(value))
+            Number.isFinite(
+                Number(value)
+            )
         ) {
             return Number(value);
         }
@@ -63,7 +78,10 @@ function getNumber(...values) {
     return 0;
 }
 
-function getAnimalId(animal, reading) {
+function getAnimalId(
+    animal,
+    reading
+) {
     return (
         animal?.id ??
         animal?.animal_id ??
@@ -78,11 +96,15 @@ function getAnimalId(animal, reading) {
     );
 }
 
-function getAnimalName(animal, reading) {
-    const id = getAnimalId(
-        animal,
-        reading
-    );
+function getAnimalName(
+    animal,
+    reading
+) {
+    const id =
+        getAnimalId(
+            animal,
+            reading
+        );
 
     return (
         animal?.name ??
@@ -97,7 +119,9 @@ function getAnimalName(animal, reading) {
     );
 }
 
-function getTemperature(reading) {
+function getTemperature(
+    reading
+) {
     return getNumber(
         reading?.temperature,
         reading?.body_temperature,
@@ -106,7 +130,9 @@ function getTemperature(reading) {
     );
 }
 
-function getHeartRate(reading) {
+function getHeartRate(
+    reading
+) {
     return getNumber(
         reading?.heart_rate,
         reading?.heartRate,
@@ -114,7 +140,9 @@ function getHeartRate(reading) {
     );
 }
 
-function getActivity(reading) {
+function getActivity(
+    reading
+) {
     return getNumber(
         reading?.activity,
         reading?.activity_level,
@@ -122,7 +150,9 @@ function getActivity(reading) {
     );
 }
 
-function getBattery(reading) {
+function getBattery(
+    reading
+) {
     return getNumber(
         reading?.battery,
         reading?.battery_level,
@@ -130,7 +160,9 @@ function getBattery(reading) {
     );
 }
 
-function getLatitude(reading) {
+function getLatitude(
+    reading
+) {
     return (
         reading?.latitude ??
         reading?.lat ??
@@ -145,7 +177,9 @@ function getLatitude(reading) {
     );
 }
 
-function getLongitude(reading) {
+function getLongitude(
+    reading
+) {
     return (
         reading?.longitude ??
         reading?.lng ??
@@ -165,7 +199,9 @@ function getLongitude(reading) {
     );
 }
 
-function getTimestamp(reading) {
+function getTimestamp(
+    reading
+) {
     return (
         reading?.timestamp ??
         reading?.created_at ??
@@ -176,9 +212,13 @@ function getTimestamp(reading) {
     );
 }
 
-function getTimestampMs(reading) {
+function getTimestampMs(
+    reading
+) {
     const timestamp =
-        getTimestamp(reading);
+        getTimestamp(
+            reading
+        );
 
     if (!timestamp) {
         return 0;
@@ -196,7 +236,9 @@ function getTimestampMs(reading) {
         : 0;
 }
 
-function formatDate(value) {
+function formatDate(
+    value
+) {
     if (!value) {
         return "—";
     }
@@ -215,7 +257,9 @@ function formatDate(value) {
     return date.toLocaleString();
 }
 
-function getTelemetryAnimalId(reading) {
+function getTelemetryAnimalId(
+    reading
+) {
     return (
         reading?.animal_id ??
         reading?.animalId ??
@@ -333,7 +377,8 @@ function replaceLatestTelemetry(
     if (
         animalId ===
             undefined ||
-        animalId === null
+        animalId ===
+            null
     ) {
         return existingReadings;
     }
@@ -361,7 +406,8 @@ function replaceLatestTelemetry(
         );
 
     if (
-        existingIndex === -1
+        existingIndex ===
+        -1
     ) {
         return [
             liveReading,
@@ -407,7 +453,9 @@ function replaceLatestTelemetry(
    ALERT HELPERS
 ========================================================================== */
 
-function getAlertSeverity(alert) {
+function getAlertSeverity(
+    alert
+) {
     const severity =
         String(
             alert?.severity ??
@@ -442,7 +490,9 @@ function getAlertSeverity(alert) {
     return "healthy";
 }
 
-function isAlertResolved(alert) {
+function isAlertResolved(
+    alert
+) {
     const status =
         String(
             alert?.status ??
@@ -613,14 +663,6 @@ export default function Dashboard() {
         setError,
     ] = useState("");
 
-    /*
-     * Reference to the live map section.
-     *
-     * The dashboard's LIVE MAP button uses this
-     * reference to bring the map into view without
-     * requiring a separate /map route.
-     */
-
     const mapSectionRef =
         useRef(null);
 
@@ -732,12 +774,15 @@ export default function Dashboard() {
                                 api.get(
                                     "/dashboard/"
                                 ),
+
                                 api.get(
                                     "/animals/"
                                 ),
+
                                 api.get(
                                     "/telemetry/"
                                 ),
+
                                 api.get(
                                     "/alerts/"
                                 ),
@@ -828,6 +873,10 @@ export default function Dashboard() {
                     ) {
                         localStorage.removeItem(
                             "access_token"
+                        );
+
+                        localStorage.removeItem(
+                            "token"
                         );
 
                         navigate(
@@ -1031,16 +1080,6 @@ export default function Dashboard() {
        MAP ANIMAL DATA
     ====================================================================== */
 
-    /*
-     * MapView accepts the registered animals separately and
-     * receives live telemetry through LiveDataContext.
-     *
-     * We enrich registered animals with their latest dashboard
-     * telemetry here so GPS coordinates are available even when
-     * the telemetry context is not populated from the same REST
-     * request.
-     */
-
     const mapAnimals =
         useMemo(() => {
             return animalRows.map(
@@ -1049,16 +1088,19 @@ export default function Dashboard() {
                     reading,
                 }) => ({
                     ...animal,
+
                     animal_id:
                         getAnimalId(
                             animal,
                             reading
                         ),
+
                     animal_name:
                         getAnimalName(
                             animal,
                             reading
                         ),
+
                     latitude:
                         getLatitude(
                             reading
@@ -1066,6 +1108,7 @@ export default function Dashboard() {
                         getLatitude(
                             animal
                         ),
+
                     longitude:
                         getLongitude(
                             reading
@@ -1073,18 +1116,22 @@ export default function Dashboard() {
                         getLongitude(
                             animal
                         ),
+
                     temperature:
                         getTemperature(
                             reading
                         ),
+
                     heart_rate:
                         getHeartRate(
                             reading
                         ),
+
                     activity:
                         getActivity(
                             reading
                         ),
+
                     health_status:
                         getHealthStatus(
                             reading,
@@ -1103,7 +1150,9 @@ export default function Dashboard() {
     const computedHealth =
         useMemo(() => {
             let healthy = 0;
+
             let warning = 0;
+
             let critical = 0;
 
             animalRows.forEach(
@@ -1139,8 +1188,11 @@ export default function Dashboard() {
             return {
                 total:
                     animalRows.length,
+
                 healthy,
+
                 warning,
+
                 critical,
             };
         }, [
@@ -1166,8 +1218,10 @@ export default function Dashboard() {
     const healthyPercentage =
         registeredAnimals > 0
             ? Math.round(
-                  (healthyAnimals /
-                      registeredAnimals) *
+                  (
+                      healthyAnimals /
+                      registeredAnimals
+                  ) *
                       100
               )
             : 0;
@@ -1175,8 +1229,10 @@ export default function Dashboard() {
     const warningPercentage =
         registeredAnimals > 0
             ? Math.round(
-                  (warningAnimals /
-                      registeredAnimals) *
+                  (
+                      warningAnimals /
+                      registeredAnimals
+                  ) *
                       100
               )
             : 0;
@@ -1184,8 +1240,10 @@ export default function Dashboard() {
     const criticalPercentage =
         registeredAnimals > 0
             ? Math.round(
-                  (criticalAnimals /
-                      registeredAnimals) *
+                  (
+                      criticalAnimals /
+                      registeredAnimals
+                  ) *
                       100
               )
             : 0;
@@ -1260,8 +1318,10 @@ export default function Dashboard() {
                             {
                                 critical:
                                     3,
+
                                 warning:
                                     2,
+
                                 healthy:
                                     1,
                             };
@@ -1384,9 +1444,13 @@ export default function Dashboard() {
     const temperaturePosition =
         useMemo(() => {
             const percentage =
-                ((averageTemperature -
-                    37) /
-                    6) *
+                (
+                    (
+                        averageTemperature -
+                        37
+                    ) /
+                    6
+                ) *
                 100;
 
             return Math.min(
@@ -1410,6 +1474,7 @@ export default function Dashboard() {
                 {
                     behavior:
                         "smooth",
+
                     block:
                         "start",
                 }
@@ -1422,6 +1487,7 @@ export default function Dashboard() {
 
     return (
         <AppShell>
+
             <div className="hs-dashboard">
 
                 {/* =========================================================
@@ -1431,18 +1497,24 @@ export default function Dashboard() {
                 <div className="hs-dashboard-topbar">
 
                     <div>
+
                         <div className="hs-breadcrumb">
+
                             COMMAND CENTER
-                            <span>/</span>
+
+                            <span>
+                                /
+                            </span>
+
                             <strong>
                                 Overview
                             </strong>
+
                         </div>
+
                     </div>
 
                     <div className="hs-top-actions">
-
-                        {/* LIVE MAP BUTTON */}
 
                         <button
                             className="hs-action-button hs-map-action-button"
@@ -1456,6 +1528,7 @@ export default function Dashboard() {
                         </button>
 
                         <span className="hs-status-pill">
+
                             <span
                                 className={`hs-status-dot ${
                                     apiOnline
@@ -1467,9 +1540,11 @@ export default function Dashboard() {
                             {apiOnline
                                 ? "API operational"
                                 : "API offline"}
+
                         </span>
 
                         <span className="hs-status-pill">
+
                             <span
                                 className={`hs-status-dot ${
                                     websocketConnected
@@ -1481,6 +1556,7 @@ export default function Dashboard() {
                             {websocketConnected
                                 ? "Live monitoring"
                                 : "Reconnecting"}
+
                         </span>
 
                         <button
@@ -1502,6 +1578,7 @@ export default function Dashboard() {
                         </button>
 
                     </div>
+
                 </div>
 
                 {/* =========================================================
@@ -1667,7 +1744,9 @@ export default function Dashboard() {
                             </div>
 
                             <div className="hs-kpi-description">
-                                {criticalAlerts.length}{" "}
+                                {
+                                    criticalAlerts.length
+                                }{" "}
                                 Critical
                             </div>
 
@@ -1822,9 +1901,11 @@ export default function Dashboard() {
 
                             <div className="hs-temperature-value">
 
-                                {averageTemperature.toFixed(
-                                    2
-                                )}
+                                {
+                                    averageTemperature.toFixed(
+                                        2
+                                    )
+                                }
 
                                 <span>
                                     °C
@@ -2058,7 +2139,6 @@ export default function Dashboard() {
                                                     );
 
                                                 return (
-
                                                     <tr
                                                         key={String(
                                                             animalId
@@ -2078,6 +2158,7 @@ export default function Dashboard() {
                                                             >
 
                                                                 <div className="hs-animal-avatar">
+
                                                                     {String(
                                                                         animalName
                                                                     )
@@ -2086,6 +2167,7 @@ export default function Dashboard() {
                                                                             2
                                                                         )
                                                                         .toUpperCase()}
+
                                                                 </div>
 
                                                                 <div>
@@ -2110,6 +2192,7 @@ export default function Dashboard() {
                                                         </td>
 
                                                         <td>
+
                                                             <strong>
                                                                 {temperature >
                                                                 0
@@ -2118,24 +2201,29 @@ export default function Dashboard() {
                                                                       )}°C`
                                                                     : "—"}
                                                             </strong>
+
                                                         </td>
 
                                                         <td>
+
                                                             {heartRate >
                                                             0
                                                                 ? `${heartRate.toFixed(
                                                                       0
                                                                   )} BPM`
                                                                 : "—"}
+
                                                         </td>
 
                                                         <td>
+
                                                             {activity >
                                                             0
                                                                 ? `${activity.toFixed(
                                                                       0
                                                                   )}%`
                                                                 : "—"}
+
                                                         </td>
 
                                                         <td>
@@ -2208,15 +2296,16 @@ export default function Dashboard() {
                                                         </td>
 
                                                         <td>
+
                                                             {formatDate(
                                                                 getTimestamp(
                                                                     reading
                                                                 )
                                                             )}
+
                                                         </td>
 
                                                     </tr>
-
                                                 );
                                             }
                                         )}
@@ -2359,7 +2448,9 @@ export default function Dashboard() {
                     </footer>
 
                 </main>
+
             </div>
+
         </AppShell>
     );
 }
@@ -2441,8 +2532,11 @@ function StatusBadge({
         <span
             className={`hs-status-badge ${safeStatus}`}
         >
+
             <span />
+
             {label}
+
         </span>
     );
 }
