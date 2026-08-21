@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import "./AppShell.css";
 
@@ -81,11 +81,34 @@ const navigation = [
 export default function AppShell({ children }) {
     const navigate = useNavigate();
 
+    /* ================================================================
+       SIDEBAR STATE
+    ================================================================= */
+
     const [sidebarOpen, setSidebarOpen] = useState(true);
+
+    /* ================================================================
+       THEME STATE
+    ================================================================= */
 
     const [darkMode, setDarkMode] = useState(() => {
         return localStorage.getItem("theme") === "dark";
     });
+
+    /* ================================================================
+       APPLY THEME
+    ================================================================= */
+
+    useEffect(() => {
+        document.documentElement.setAttribute(
+            "data-theme",
+            darkMode ? "dark" : "light"
+        );
+    }, [darkMode]);
+
+    /* ================================================================
+       THEME TOGGLE
+    ================================================================= */
 
     const toggleTheme = () => {
         const nextTheme = !darkMode;
@@ -103,6 +126,18 @@ export default function AppShell({ children }) {
         );
     };
 
+    /* ================================================================
+       SIDEBAR TOGGLE
+    ================================================================= */
+
+    const toggleSidebar = () => {
+        setSidebarOpen((value) => !value);
+    };
+
+    /* ================================================================
+       LOGOUT
+    ================================================================= */
+
     const handleLogout = () => {
         localStorage.removeItem("access_token");
 
@@ -119,23 +154,28 @@ export default function AppShell({ children }) {
                     : "sidebar-collapsed"
             }`}
         >
-            {/* =====================================================
+            {/* ========================================================
                 SIDEBAR
-            ====================================================== */}
+            ========================================================= */}
 
             <aside className="app-sidebar">
 
-                {/* BRAND */}
+                {/* ====================================================
+                    BRAND
+                ===================================================== */}
 
                 <div className="sidebar-brand">
 
-                    <div className="brand-symbol">
-                        HS
+                    <div className="brand-logo-container">
+                        <img
+                            src="/Qm6NSEu-_400x400.jpg"
+                            alt="herdsense"
+                            className="brand-logo"
+                        />
                     </div>
 
                     {sidebarOpen && (
                         <div className="brand-copy">
-
                             <strong>
                                 HerdSense AI
                             </strong>
@@ -143,7 +183,6 @@ export default function AppShell({ children }) {
                             <span>
                                 Livestock intelligence
                             </span>
-
                         </div>
                     )}
 
@@ -151,21 +190,19 @@ export default function AppShell({ children }) {
 
                 <div className="sidebar-divider" />
 
-                {/* =================================================
+                {/* ====================================================
                     NAVIGATION
-                ================================================== */}
+                ===================================================== */}
 
                 <nav
                     className="sidebar-navigation"
                     aria-label="Main navigation"
                 >
-
                     {navigation.map((group) => (
                         <div
                             className="navigation-group"
                             key={group.section}
                         >
-
                             {sidebarOpen && (
                                 <div className="navigation-section">
                                     {group.section}
@@ -189,7 +226,6 @@ export default function AppShell({ children }) {
                                         }`
                                     }
                                 >
-
                                     <span className="navigation-icon">
                                         {item.icon}
                                     </span>
@@ -199,18 +235,15 @@ export default function AppShell({ children }) {
                                             {item.label}
                                         </span>
                                     )}
-
                                 </NavLink>
                             ))}
-
                         </div>
                     ))}
-
                 </nav>
 
-                {/* =================================================
+                {/* ====================================================
                     SIDEBAR BOTTOM
-                ================================================== */}
+                ===================================================== */}
 
                 <div className="sidebar-bottom">
 
@@ -227,8 +260,12 @@ export default function AppShell({ children }) {
                                     : "Dark mode"
                                 : undefined
                         }
+                        aria-label={
+                            darkMode
+                                ? "Switch to light mode"
+                                : "Switch to dark mode"
+                        }
                     >
-
                         <span className="navigation-icon">
                             {darkMode ? "☀" : "☾"}
                         </span>
@@ -240,7 +277,6 @@ export default function AppShell({ children }) {
                                     : "Dark mode"}
                             </span>
                         )}
-
                     </button>
 
                     {/* LOGOUT */}
@@ -254,8 +290,8 @@ export default function AppShell({ children }) {
                                 ? "Sign out"
                                 : undefined
                         }
+                        aria-label="Sign out"
                     >
-
                         <span className="navigation-icon">
                             ↪
                         </span>
@@ -265,22 +301,20 @@ export default function AppShell({ children }) {
                                 Sign out
                             </span>
                         )}
-
                     </button>
 
                 </div>
-
             </aside>
 
-            {/* =====================================================
+            {/* ========================================================
                 MAIN APPLICATION
-            ====================================================== */}
+            ========================================================= */}
 
             <div className="app-content">
 
-                {/* =================================================
+                {/* ====================================================
                     TOPBAR
-                ================================================== */}
+                ===================================================== */}
 
                 <header className="app-topbar">
 
@@ -289,11 +323,7 @@ export default function AppShell({ children }) {
                     <button
                         type="button"
                         className="sidebar-toggle"
-                        onClick={() =>
-                            setSidebarOpen(
-                                (value) => !value
-                            )
-                        }
+                        onClick={toggleSidebar}
                         aria-label="Toggle navigation"
                         title={
                             sidebarOpen
@@ -377,19 +407,17 @@ export default function AppShell({ children }) {
                         </div>
 
                     </div>
-
                 </header>
 
-                {/* =================================================
+                {/* ====================================================
                     PAGE CONTENT
-                ================================================== */}
+                ===================================================== */}
 
                 <main className="app-main">
                     {children}
                 </main>
 
             </div>
-
         </div>
     );
 }
