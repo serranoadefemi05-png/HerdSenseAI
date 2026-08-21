@@ -2,18 +2,19 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import hash_password
-from app.db.database import Base, engine, SessionLocal
+from app.db.database import Base, engine
+
 
 # =============================================================================
-# SQLALCHEMY MODELS
+# HERDSENSE AI — DATABASE MODELS
 # =============================================================================
 # IMPORTANT:
-# Every model must be imported before create_all() so SQLAlchemy knows about
-# every table.
+# Import every SQLAlchemy model BEFORE Base.metadata.create_all().
+#
+# Without these imports, SQLAlchemy may not know about the tables and
+# create_all() will not create them.
 # =============================================================================
 
 from app.models.user import User
@@ -41,29 +42,41 @@ from app.routers.admin import router as admin_router
 
 
 # =============================================================================
-# CORS
+# CORS CONFIGURATION
 # =============================================================================
 
 allowed_origins = [
+    # -------------------------------------------------------------------------
     # Local development
+    # -------------------------------------------------------------------------
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+
     "http://localhost:5174",
     "http://127.0.0.1:5174",
 
-    # Production frontend
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+
+    # -------------------------------------------------------------------------
+    # Render production frontend
+    # -------------------------------------------------------------------------
     "https://herdsenseai-frontend.onrender.com",
 ]
 
 
-# Add configured frontend URL.
+# =============================================================================
+# ADD FRONTEND URL FROM ENVIRONMENT
+# =============================================================================
+
 configured_frontend_url = getattr(
     settings,
     "FRONTEND_URL",
-    "",
+    None,
 )
 
 if configured_frontend_url:
+
     configured_frontend_url = (
         configured_frontend_url
         .strip()
@@ -79,29 +92,48 @@ if configured_frontend_url:
         )
 
 
-# Add additional origins from CORS_ORIGINS.
+# =============================================================================
+# ADD CORS_ORIGINS FROM ENVIRONMENT
+# =============================================================================
+#
+# Example Render environment variable:
+#
+# CORS_ORIGINS=https://herdsenseai-frontend.onrender.com,http://localhost:5173
+#
+# This allows us to add additional frontend domains without changing code.
+# =============================================================================
+
 configured_cors_origins = getattr(
     settings,
     "CORS_ORIGINS",
-    "",
+    None,
 )
 
 if configured_cors_origins:
+
     for origin in configured_cors_origins.split(","):
-        origin = origin.strip().rstrip("/")
+
+        origin = (
+            origin
+            .strip()
+            .rstrip("/")
+        )
 
         if origin and origin not in allowed_origins:
             allowed_origins.append(origin)
 
 
-# Remove duplicates.
+# =============================================================================
+# REMOVE DUPLICATES
+# =============================================================================
+
 allowed_origins = list(
     dict.fromkeys(allowed_origins)
 )
 
 
 print(
-    "🌐 Allowed CORS origins:",
+    "🌐 HerdSense AI CORS origins:",
     allowed_origins,
 )
 
@@ -110,160 +142,45 @@ print(
 # DATABASE INITIALIZATION
 # =============================================================================
 
-def initialize_database():
+def initialize_database() -> None:
     """
-    Create missing database tables.
+    Initialize all SQLAlchemy tables.
 
     Existing tables are preserved.
-    No existing data is deleted.
+
+    SQLAlchemy create_all() only creates tables that do not already exist.
+    It does not delete existing tables or existing records.
     """
 
+    print("HerdSense AI: initializing database...")
+
     try:
+
         Base.metadata.create_all(
             bind=engine
         )
 
         print(
-            "✅ Database initialization successful."
-        )
-
-    except Exception as exc:
-        print(
-            "❌ Database initialization failed:"
-        )
-        print(
-            repr(exc)
-        )
-
-        # Do not silently pretend the database is healthy.
-        raise
-
-
-# =============================================================================
-# ADMIN ACCOUNT BOOTSTRAP
-# =============================================================================
-
-def ensure_admin_account(
-    db: Session,
-    email: str,
-    password: str,
-    admin_number: int,
-):
-    """
-    Ensure that a configured permanent admin account exists.
-
-    If the account does not exist:
-        create it.
-
-    If it already exists:
-        make sure its role remains admin.
-
-    The password is NOT replaced automatically when an account already exists.
-    This prevents a restart from unexpectedly changing an administrator's
-    password.
-
-    Admin credentials remain server-side environment variables.
-    """
-
-    email = (email or "").strip().lower()
-    password = password or ""
-
-    if not email or not password:
-        print(
-            f"⚠️ Admin #{admin_number} credentials are not configured."
-        )
-        return
-
-    user = (
-        db.query(User)
-        .filter(User.email == email)
-        .first()
-    )
-
-    # -------------------------------------------------------------------------
-    # CREATE ADMIN
-    # -------------------------------------------------------------------------
-
-    if user is None:
-
-        admin_user = User(
-            email=email,
-            full_name=f"HerdSense AI Admin {admin_number}",
-            hashed_password=hash_password(password),
-            role="admin",
-        )
-
-        db.add(admin_user)
-        db.commit()
-        db.refresh(admin_user)
-
-        print(
-            f"✅ Admin #{admin_number} created: {email}"
-        )
-
-        return
-
-    # -------------------------------------------------------------------------
-    # EXISTING ACCOUNT
-    # -------------------------------------------------------------------------
-
-    changed = False
-
-    if user.role != "admin":
-        user.role = "admin"
-        changed = True
-
-    if changed:
-        db.commit()
-
-        print(
-            f"✅ Admin #{admin_number} role restored: {email}"
-        )
-
-    else:
-        print(
-            f"✅ Admin #{admin_number} already exists: {email}"
-        )
-
-
-def initialize_admin_accounts():
-    """
-    Create/verify the two permanent administrator accounts.
-    """
-
-    db = SessionLocal()
-
-    try:
-
-        ensure_admin_account(
-            db=db,
-            email=settings.ADMIN_EMAIL,
-            password=settings.ADMIN_PASSWORD,
-            admin_number=1,
-        )
-
-        ensure_admin_account(
-            db=db,
-            email=settings.ADMIN_EMAIL_2,
-            password=settings.ADMIN_PASSWORD_2,
-            admin_number=2,
+            "HerdSense AI: database initialization completed."
         )
 
     except Exception as exc:
 
-        db.rollback()
-
         print(
-            "❌ Admin account initialization failed:"
+            "❌ HerdSense AI database initialization failed:"
         )
+
         print(
             repr(exc)
         )
 
-        raise
-
-    finally:
-        db.close()
+        # Do not prevent the API from starting.
+        #
+        # This allows Render to expose the actual database/API error
+        # instead of completely crashing the service.
+        #
+        # If the database is unavailable, individual database requests
+        # will still fail and the logs will show the actual problem.
 
 
 # =============================================================================
@@ -278,16 +195,10 @@ async def lifespan(app: FastAPI):
     )
 
     # -------------------------------------------------------------------------
-    # DATABASE
+    # Initialize database
     # -------------------------------------------------------------------------
 
     initialize_database()
-
-    # -------------------------------------------------------------------------
-    # ADMIN ACCOUNTS
-    # -------------------------------------------------------------------------
-
-    initialize_admin_accounts()
 
     print(
         "🚀 HerdSense AI API startup complete."
@@ -305,12 +216,16 @@ async def lifespan(app: FastAPI):
 # =============================================================================
 
 app = FastAPI(
+
     title="HerdSense AI API",
+
     description=(
         "Livestock monitoring, telemetry, intelligence, "
         "predictive analytics and Base blockchain integration API."
     ),
+
     version="1.0.0",
+
     lifespan=lifespan,
 )
 
@@ -320,10 +235,15 @@ app = FastAPI(
 # =============================================================================
 
 app.add_middleware(
+
     CORSMiddleware,
+
     allow_origins=allowed_origins,
+
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
 )
 
@@ -372,37 +292,50 @@ app.include_router(
     base_router
 )
 
+# -----------------------------------------------------------------------------
+# ADMIN CONTROL ROOM
+# -----------------------------------------------------------------------------
+
 app.include_router(
     admin_router
 )
 
 
 # =============================================================================
-# ROOT
+# ROOT ENDPOINT
 # =============================================================================
 
 @app.get("/")
 def root():
 
     return {
+
         "message": "Welcome to HerdSense AI",
+
         "status": "Running",
+
         "version": "1.0.0",
+
         "environment": settings.APP_ENV,
+
         "blockchain": settings.BASE_NETWORK,
     }
 
 
 # =============================================================================
-# HEALTH
+# HEALTH CHECK
 # =============================================================================
 
 @app.get("/health")
 def health_check():
 
     return {
+
         "server": "Healthy",
+
         "service": "HerdSense AI API",
+
         "environment": settings.APP_ENV,
+
         "blockchain": settings.BASE_NETWORK,
     }

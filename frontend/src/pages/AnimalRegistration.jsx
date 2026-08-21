@@ -26,7 +26,7 @@ const INITIAL_FORM = {
     gender: "female",
     age: "",
     weight: "",
-    farm_id: "1",
+    farm_id: "",
 };
 
 /* ==========================================================================
@@ -34,14 +34,12 @@ const INITIAL_FORM = {
    ========================================================================== */
 
 function getToken() {
-    return localStorage.getItem(
-        "access_token"
-    );
+    return localStorage.getItem("access_token");
 }
 
 function normalizeError(error) {
-    const detail =
-        error?.response?.data?.detail;
+    const status = error?.response?.status;
+    const detail = error?.response?.data?.detail;
 
     if (typeof detail === "string") {
         return detail;
@@ -50,11 +48,18 @@ function normalizeError(error) {
     if (Array.isArray(detail)) {
         return detail
             .map((item) => {
-                if (
-                    typeof item ===
-                    "string"
-                ) {
+                if (typeof item === "string") {
                     return item;
+                }
+
+                if (Array.isArray(item?.loc)) {
+                    const field = item.loc[item.loc.length - 1];
+
+                    return `${field}: ${
+                        item.msg ||
+                        item.message ||
+                        "Validation error"
+                    }`;
                 }
 
                 return (
@@ -66,8 +71,40 @@ function normalizeError(error) {
             .join(", ");
     }
 
+    if (status === 400) {
+        return (
+            error?.response?.data?.message ||
+            "The animal data could not be accepted."
+        );
+    }
+
+    if (status === 404) {
+        return (
+            "The selected farm or animal resource could not be found."
+        );
+    }
+
+    if (status === 409) {
+        return (
+            "An animal with this tag ID already exists."
+        );
+    }
+
+    if (status === 422) {
+        return (
+            "Some animal information is invalid. Please review the highlighted fields."
+        );
+    }
+
+    if (status >= 500) {
+        return (
+            "The HerdSense AI server encountered an error. Please try again."
+        );
+    }
+
     return (
         error?.response?.data?.message ||
+        error?.message ||
         "Unable to register this animal."
     );
 }
@@ -75,17 +112,11 @@ function normalizeError(error) {
 function validateForm(formData) {
     const errors = {};
 
-    const tagId =
-        formData.tag_id.trim();
-
-    const name =
-        formData.name.trim();
-
-    const species =
-        formData.species.trim();
-
-    const farmId =
-        formData.farm_id.trim();
+    const tagId = formData.tag_id.trim();
+    const name = formData.name.trim();
+    const species = formData.species.trim();
+    const gender = formData.gender.trim();
+    const farmId = formData.farm_id.trim();
 
     /* ----------------------------------------------------------------------
        REQUIRED FIELDS
@@ -106,44 +137,75 @@ function validateForm(formData) {
             "Species is required.";
     }
 
-    if (!formData.gender) {
+    if (!gender) {
         errors.gender =
             "Gender is required.";
     }
 
     if (!farmId) {
         errors.farm_id =
-            "Farm ID is required.";
+            "Select a farm for this animal.";
     }
 
     /* ----------------------------------------------------------------------
-       TAG VALIDATION
+       TAG ID
        ---------------------------------------------------------------------- */
 
-    if (
-        tagId &&
-        tagId.length >
-            100
-    ) {
+    if (tagId && tagId.length > 100) {
         errors.tag_id =
             "Tag ID must be 100 characters or fewer.";
     }
 
     /* ----------------------------------------------------------------------
-       NAME VALIDATION
+       NAME
        ---------------------------------------------------------------------- */
 
-    if (
-        name &&
-        name.length >
-            150
-    ) {
+    if (name && name.length > 150) {
         errors.name =
             "Animal name must be 150 characters or fewer.";
     }
 
     /* ----------------------------------------------------------------------
-       FARM VALIDATION
+       SPECIES
+       ---------------------------------------------------------------------- */
+
+    const validSpecies = [
+        "Cattle",
+        "Goat",
+        "Sheep",
+        "Pig",
+        "Other",
+    ];
+
+    if (
+        species &&
+        !validSpecies.includes(species)
+    ) {
+        errors.species =
+            "Please select a valid species.";
+    }
+
+    /* ----------------------------------------------------------------------
+       GENDER
+       ---------------------------------------------------------------------- */
+
+    const validGenders = [
+        "female",
+        "male",
+    ];
+
+    if (
+        gender &&
+        !validGenders.includes(
+            gender.toLowerCase()
+        )
+    ) {
+        errors.gender =
+            "Please select a valid gender.";
+    }
+
+    /* ----------------------------------------------------------------------
+       FARM
        ---------------------------------------------------------------------- */
 
     if (farmId) {
@@ -157,36 +219,33 @@ function validateForm(formData) {
             numericFarmId <= 0
         ) {
             errors.farm_id =
-                "Farm ID must be a valid positive number.";
+                "Please select a valid farm.";
         }
     }
 
     /* ----------------------------------------------------------------------
-       AGE VALIDATION
+       AGE
        ---------------------------------------------------------------------- */
 
-    if (
-        formData.age !== ""
-    ) {
+    if (formData.age !== "") {
         const age =
             Number(formData.age);
 
         if (
             !Number.isFinite(age) ||
+            !Number.isInteger(age) ||
             age < 0
         ) {
             errors.age =
-                "Age must be a valid non-negative number.";
+                "Age must be a valid non-negative whole number.";
         }
     }
 
     /* ----------------------------------------------------------------------
-       WEIGHT VALIDATION
+       WEIGHT
        ---------------------------------------------------------------------- */
 
-    if (
-        formData.weight !== ""
-    ) {
+    if (formData.weight !== "") {
         const weight =
             Number(formData.weight);
 
@@ -216,6 +275,15 @@ export default function AnimalRegistration() {
     const [formData, setFormData] =
         useState(INITIAL_FORM);
 
+    const [farms, setFarms] =
+        useState([]);
+
+    const [loadingFarms, setLoadingFarms] =
+        useState(true);
+
+    const [farmLoadError, setFarmLoadError] =
+        useState("");
+
     const [errors, setErrors] =
         useState({});
 
@@ -228,9 +296,129 @@ export default function AnimalRegistration() {
     const [success, setSuccess] =
         useState("");
 
-    /* ======================================================================
+    /* ==========================================================================
+       LOAD AUTHENTICATED USER FARMS
+       ========================================================================== */
+
+    useEffect(() => {
+        let mounted = true;
+
+        const loadFarms = async () => {
+            const token =
+                getToken();
+
+            if (!token) {
+                navigate(
+                    "/login",
+                    {
+                        replace: true,
+                    }
+                );
+
+                return;
+            }
+
+            try {
+                setLoadingFarms(true);
+                setFarmLoadError("");
+
+                const response =
+                    await api.get(
+                        "/farms/",
+                        {
+                            headers: {
+                                Authorization:
+                                    `Bearer ${token}`,
+                            },
+                        }
+                    );
+
+                if (!mounted) {
+                    return;
+                }
+
+                const loadedFarms =
+                    Array.isArray(
+                        response?.data
+                    )
+                        ? response.data
+                        : [];
+
+                setFarms(
+                    loadedFarms
+                );
+
+                /*
+                 * If the authenticated user has
+                 * exactly one farm, automatically
+                 * select it.
+                 */
+
+                if (
+                    loadedFarms.length ===
+                    1
+                ) {
+                    setFormData(
+                        (current) => ({
+                            ...current,
+                            farm_id:
+                                String(
+                                    loadedFarms[0]
+                                        .id
+                                ),
+                        })
+                    );
+                }
+            } catch (err) {
+                console.error(
+                    "Farm loading error:",
+                    err
+                );
+
+                if (!mounted) {
+                    return;
+                }
+
+                if (
+                    err?.response
+                        ?.status === 401
+                ) {
+                    localStorage.removeItem(
+                        "access_token"
+                    );
+
+                    navigate(
+                        "/login",
+                        {
+                            replace: true,
+                        }
+                    );
+
+                    return;
+                }
+
+                setFarmLoadError(
+                    normalizeError(err)
+                );
+            } finally {
+                if (mounted) {
+                    setLoadingFarms(
+                        false
+                    );
+                }
+            }
+        };
+
+        loadFarms();
+
+        return () => {
+            mounted = false;
+        };
+    }, [navigate]);
+
+    /* ==========================================================================
        CLEANUP
-       ====================================================================== */
+       ========================================================================== */
 
     useEffect(() => {
         return () => {
@@ -244,9 +432,9 @@ export default function AnimalRegistration() {
         };
     }, []);
 
-    /* ======================================================================
+    /* ==========================================================================
        FORM CHANGE
-       ====================================================================== */
+       ========================================================================== */
 
     const handleChange = (
         event
@@ -274,9 +462,9 @@ export default function AnimalRegistration() {
         setSuccess("");
     };
 
-    /* ======================================================================
+    /* ==========================================================================
        CANCEL
-       ====================================================================== */
+       ========================================================================== */
 
     const handleCancel = () => {
         if (submitting) {
@@ -286,9 +474,9 @@ export default function AnimalRegistration() {
         navigate("/animals");
     };
 
-    /* ======================================================================
+    /* ==========================================================================
        SUBMIT
-       ====================================================================== */
+       ========================================================================== */
 
     const handleSubmit =
         async (event) => {
@@ -300,6 +488,32 @@ export default function AnimalRegistration() {
 
             setError("");
             setSuccess("");
+
+            /*
+             * Never submit while the farm list
+             * is still loading.
+             */
+
+            if (loadingFarms) {
+                setError(
+                    "Please wait while your farms are loaded."
+                );
+
+                return;
+            }
+
+            /*
+             * The authenticated user must have
+             * at least one farm.
+             */
+
+            if (farms.length === 0) {
+                setError(
+                    "No farm is available for your account. Create a farm before registering an animal."
+                );
+
+                return;
+            }
 
             const validationErrors =
                 validateForm(
@@ -315,10 +529,6 @@ export default function AnimalRegistration() {
                     validationErrors
                 );
 
-                /*
-                 * Move focus to the first
-                 * invalid field when possible.
-                 */
                 const firstError =
                     Object.keys(
                         validationErrors
@@ -332,6 +542,38 @@ export default function AnimalRegistration() {
                             )
                             ?.focus();
                     }
+                );
+
+                return;
+            }
+
+            /*
+             * Make absolutely sure the selected
+             * farm belongs to the farms returned
+             * by the authenticated-user endpoint.
+             */
+
+            const numericFarmId =
+                Number(
+                    formData.farm_id
+                );
+
+            const selectedFarm =
+                farms.find(
+                    (farm) =>
+                        Number(
+                            farm.id
+                        ) ===
+                        numericFarmId
+                );
+
+            if (!selectedFarm) {
+                setErrors(
+                    (current) => ({
+                        ...current,
+                        farm_id:
+                            "The selected farm is invalid. Please choose one of your available farms.",
+                    })
                 );
 
                 return;
@@ -355,15 +597,27 @@ export default function AnimalRegistration() {
                 setSubmitting(true);
 
                 /*
-                 * Keep the payload compatible
-                 * with the existing FastAPI
-                 * animal creation schema.
+                 * Exact payload expected by:
+                 *
+                 * AnimalCreate
+                 *
+                 * {
+                 *   tag_id: str,
+                 *   name: str,
+                 *   species: str,
+                 *   breed: str | None,
+                 *   gender: str,
+                 *   age: int | None,
+                 *   weight: float | None,
+                 *   farm_id: int
+                 * }
                  */
 
                 const payload = {
                     tag_id:
                         formData.tag_id
-                            .trim(),
+                            .trim()
+                            .toUpperCase(),
 
                     name:
                         formData.name
@@ -379,7 +633,9 @@ export default function AnimalRegistration() {
                         null,
 
                     gender:
-                        formData.gender,
+                        formData.gender
+                            .trim()
+                            .toLowerCase(),
 
                     age:
                         formData.age ===
@@ -398,10 +654,13 @@ export default function AnimalRegistration() {
                               ),
 
                     farm_id:
-                        Number(
-                            formData.farm_id
-                        ),
+                        numericFarmId,
                 };
+
+                console.log(
+                    "Creating HerdSense animal:",
+                    payload
+                );
 
                 const response =
                     await api.post(
@@ -418,41 +677,32 @@ export default function AnimalRegistration() {
                 const registeredAnimal =
                     response?.data;
 
-                const registeredId =
-                    registeredAnimal?.id;
-
                 setSuccess(
-                    "Animal registered successfully."
+                    "Animal registered successfully. Returning to the Animals registry..."
                 );
 
                 /*
-                 * Give the operator a short
-                 * confirmation before opening
-                 * the newly-created animal.
+                 * Return to the registry after
+                 * successful creation.
+                 *
+                 * The Animals page should fetch its
+                 * current data when mounted.
                  */
 
                 redirectTimer.current =
                     setTimeout(() => {
-                        if (
-                            registeredId !==
-                                undefined &&
-                            registeredId !==
-                                null
-                        ) {
-                            navigate(
-                                `/animals/${registeredId}`,
-                                {
-                                    replace: true,
-                                }
-                            );
-                        } else {
-                            navigate(
-                                "/animals",
-                                {
-                                    replace: true,
-                                }
-                            );
-                        }
+                        navigate(
+                            "/animals",
+                            {
+                                replace: true,
+                                state: {
+                                    animalCreated:
+                                        true,
+                                    animal:
+                                        registeredAnimal,
+                                },
+                            }
+                        );
                     }, 900);
             } catch (err) {
                 console.error(
@@ -478,13 +728,6 @@ export default function AnimalRegistration() {
                     return;
                 }
 
-                /*
-                 * FastAPI commonly returns 400/409
-                 * for duplicate or invalid records.
-                 * We surface the backend message
-                 * instead of hiding it.
-                 */
-
                 setError(
                     normalizeError(err)
                 );
@@ -493,9 +736,9 @@ export default function AnimalRegistration() {
             }
         };
 
-    /* ======================================================================
+    /* ==========================================================================
        RENDER
-       ====================================================================== */
+       ========================================================================== */
 
     return (
         <AppShell>
@@ -555,6 +798,8 @@ export default function AnimalRegistration() {
                             <span>
                                 {submitting
                                     ? "Processing request"
+                                    : loadingFarms
+                                    ? "Loading farms"
                                     : "System ready"}
                             </span>
                         </div>
@@ -583,6 +828,31 @@ export default function AnimalRegistration() {
 
                             <span>
                                 {error}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {/* ==========================================================
+                    FARM LOAD ERROR
+                ========================================================== */}
+
+                {farmLoadError && (
+                    <div
+                        className="registration-message registration-message-error"
+                        role="alert"
+                    >
+                        <div className="registration-message-icon">
+                            !
+                        </div>
+
+                        <div>
+                            <strong>
+                                Farm data unavailable
+                            </strong>
+
+                            <span>
+                                {farmLoadError}
                             </span>
                         </div>
                     </div>
@@ -1069,12 +1339,9 @@ export default function AnimalRegistration() {
 
                                 <p>
                                     Assign this
-                                    animal to the
-                                    farm that will
-                                    receive its
-                                    telemetry and
-                                    intelligence
-                                    events.
+                                    animal to one
+                                    of your
+                                    registered farms.
                                 </p>
                             </div>
 
@@ -1085,27 +1352,26 @@ export default function AnimalRegistration() {
                             <div className="registration-field">
 
                                 <label htmlFor="farm_id">
-                                    FARM ID
+                                    FARM
                                     <span>
                                         REQUIRED
                                     </span>
                                 </label>
 
-                                <input
+                                <select
                                     id="farm_id"
                                     name="farm_id"
-                                    type="number"
-                                    min="1"
-                                    step="1"
                                     value={
                                         formData.farm_id
                                     }
                                     onChange={
                                         handleChange
                                     }
-                                    placeholder="e.g. 1"
                                     disabled={
-                                        submitting
+                                        submitting ||
+                                        loadingFarms ||
+                                        farms.length ===
+                                            0
                                     }
                                     aria-invalid={
                                         Boolean(
@@ -1117,7 +1383,35 @@ export default function AnimalRegistration() {
                                             ? "field-error"
                                             : ""
                                     }
-                                />
+                                >
+
+                                    <option value="">
+                                        {loadingFarms
+                                            ? "Loading your farms..."
+                                            : farms.length ===
+                                              0
+                                            ? "No farms available"
+                                            : "Select a farm"}
+                                    </option>
+
+                                    {farms.map(
+                                        (
+                                            farm
+                                        ) => (
+                                            <option
+                                                key={
+                                                    farm.id
+                                                }
+                                                value={
+                                                    farm.id
+                                                }
+                                            >
+                                                {farm.name}
+                                            </option>
+                                        )
+                                    )}
+
+                                </select>
 
                                 {errors.farm_id && (
                                     <small>
@@ -1126,6 +1420,18 @@ export default function AnimalRegistration() {
                                         }
                                     </small>
                                 )}
+
+                                {!loadingFarms &&
+                                    !farmLoadError &&
+                                    farms.length ===
+                                        0 && (
+                                        <small>
+                                            Create a farm
+                                            before
+                                            registering an
+                                            animal.
+                                        </small>
+                                    )}
 
                             </div>
 
@@ -1185,7 +1491,10 @@ export default function AnimalRegistration() {
                             type="submit"
                             className="registration-submit"
                             disabled={
-                                submitting
+                                submitting ||
+                                loadingFarms ||
+                                farms.length ===
+                                    0
                             }
                         >
                             {submitting ? (

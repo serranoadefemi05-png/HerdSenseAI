@@ -10,7 +10,10 @@ import {
     useState,
 } from "react";
 
-import { useNavigate } from "react-router-dom";
+import {
+    useLocation,
+    useNavigate,
+} from "react-router-dom";
 
 import AppShell from "../components/AppShell";
 import api from "../api/api";
@@ -368,6 +371,7 @@ function getMetricStatus(
 
 export default function Animals() {
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [animals, setAnimals] = useState([]);
     const [telemetry, setTelemetry] = useState([]);
@@ -382,6 +386,9 @@ export default function Animals() {
         useState(false);
 
     const [error, setError] =
+        useState("");
+
+    const [registrationNotice, setRegistrationNotice] =
         useState("");
 
     const [search, setSearch] =
@@ -570,6 +577,113 @@ export default function Animals() {
     );
 
     /* ======================================================================
+       REGISTRATION SUCCESS HANDLING
+       ====================================================================== */
+
+    useEffect(() => {
+        const state =
+            location.state;
+
+        if (
+            !state?.animalCreated ||
+            !state?.animal
+        ) {
+            return;
+        }
+
+        const createdAnimal =
+            state.animal;
+
+        const createdId =
+            getAnimalId(
+                createdAnimal
+            );
+
+        /*
+         * Optimistically insert the newly
+         * created animal immediately.
+         *
+         * The subsequent API refresh remains
+         * the source of truth.
+         */
+
+        if (
+            createdId !== undefined &&
+            createdId !== null
+        ) {
+            setAnimals(
+                (current) => {
+                    const alreadyExists =
+                        current.some(
+                            (animal) =>
+                                String(
+                                    getAnimalId(
+                                        animal
+                                    )
+                                ) ===
+                                String(
+                                    createdId
+                                )
+                        );
+
+                    if (
+                        alreadyExists
+                    ) {
+                        return current;
+                    }
+
+                    return [
+                        createdAnimal,
+                        ...current,
+                    ];
+                }
+            );
+        }
+
+        setRegistrationNotice(
+            `${getAnimalName(
+                createdAnimal
+            )} was registered successfully and added to the animal registry.`
+        );
+
+        /*
+         * Remove router state so that refreshing
+         * the page does not display the same
+         * registration notice again.
+         */
+
+        navigate(
+            location.pathname,
+            {
+                replace: true,
+                state: {},
+            }
+        );
+
+        /*
+         * Immediately synchronize with the
+         * backend rather than waiting for the
+         * 15-second polling interval.
+         */
+
+        fetchAnimals(true);
+
+        const timer =
+            setTimeout(() => {
+                setRegistrationNotice("");
+            }, 5000);
+
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [
+        location.pathname,
+        location.state,
+        navigate,
+        fetchAnimals,
+    ]);
+
+    /* ======================================================================
        INITIAL LOAD + AUTO REFRESH
        ====================================================================== */
 
@@ -591,17 +705,6 @@ export default function Animals() {
        ====================================================================== */
 
     const animalRows = useMemo(() => {
-        /*
-         * Build a telemetry index first.
-         *
-         * The previous implementation filtered the entire telemetry
-         * collection for every animal. This is unnecessarily expensive
-         * as the registry grows.
-         *
-         * We now index telemetry by animal ID and only inspect the
-         * relevant records.
-         */
-
         const telemetryByAnimal =
             new Map();
 
@@ -924,10 +1027,6 @@ export default function Animals() {
                     }
                 );
 
-                /*
-                 * Immediately update the UI.
-                 */
-
                 setAnimals((current) =>
                     current.filter(
                         (animal) =>
@@ -941,11 +1040,6 @@ export default function Animals() {
                             )
                     )
                 );
-
-                /*
-                 * Remove related telemetry from
-                 * the current client state.
-                 */
 
                 setTelemetry((current) =>
                     current.filter(
@@ -969,10 +1063,6 @@ export default function Animals() {
 
                 setSelectedAnimal(null);
                 setDeleteTarget(null);
-
-                /*
-                 * Confirm server synchronization.
-                 */
 
                 await fetchAnimals(true);
             } catch (err) {
@@ -1123,6 +1213,41 @@ export default function Animals() {
                     </div>
 
                 </header>
+
+                {registrationNotice && (
+                    <div
+                        className="animals-registration-success"
+                        role="status"
+                    >
+                        <div className="animals-registration-success-icon">
+                            ✓
+                        </div>
+
+                        <div>
+                            <strong>
+                                Animal registered
+                            </strong>
+
+                            <span>
+                                {
+                                    registrationNotice
+                                }
+                            </span>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setRegistrationNotice(
+                                    ""
+                                )
+                            }
+                            aria-label="Dismiss registration notification"
+                        >
+                            ×
+                        </button>
+                    </div>
+                )}
 
                 {error && (
                     <div className="animals-error">
@@ -1472,6 +1597,7 @@ export default function Animals() {
                                                                     {
                                                                         animal.species
                                                                     }
+
                                                                 </span>
 
                                                             </div>

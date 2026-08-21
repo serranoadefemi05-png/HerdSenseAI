@@ -1,418 +1,519 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+/*
+|--------------------------------------------------------------------------
+| HERDSENSE AI — TELEMETRY WEBSOCKET
+|--------------------------------------------------------------------------
+| Production-safe WebSocket connection.
+|
+| Local:
+|   ws://127.0.0.1:8000/ws/telemetry
+|
+| Production:
+|   wss://herdsenseai.onrender.com/ws/telemetry
+|--------------------------------------------------------------------------
+*/
 
-const WS_URL =
-    import.meta.env.VITE_WS_URL ||
+import {
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
+
+/* ==========================================================================
+   CONFIGURATION
+========================================================================== */
+
+const LOCAL_WS_URL =
     "ws://127.0.0.1:8000/ws/telemetry";
 
-const INITIAL_RECONNECT_DELAY = 1000;
-const MAX_RECONNECT_DELAY = 10000;
-const MAX_RECONNECT_EXPONENT = 3;
+const PRODUCTION_WS_URL =
+    "wss://herdsenseai.onrender.com/ws/telemetry";
 
-export default function useTelemetrySocket({
-    onTelemetry,
-    onHealthUpdate,
-    onAlert,
-    onAlertStatus,
-    onIntelligenceUpdate,
-    enabled = true,
-} = {}) {
-    const socketRef = useRef(null);
+const configuredWsUrl =
+    import.meta.env.VITE_WS_URL;
+
+const DEFAULT_WS_URL =
+    import.meta.env.PROD
+        ? PRODUCTION_WS_URL
+        : LOCAL_WS_URL;
+
+const WS_URL =
+    configuredWsUrl?.trim()
+        ? configuredWsUrl.trim()
+        : DEFAULT_WS_URL;
+
+/*
+ * Reconnection settings.
+ */
+
+const INITIAL_RECONNECT_DELAY =
+    3000;
+
+const MAX_RECONNECT_DELAY =
+    30000;
+
+const PING_INTERVAL =
+    25000;
+
+/* ==========================================================================
+   HOOK
+========================================================================== */
+
+export default function useTelemetrySocket(
+    onTelemetry
+) {
+    const socketRef =
+        useRef(null);
 
     const reconnectTimerRef =
         useRef(null);
 
-    const reconnectAttemptsRef =
-        useRef(0);
+    const pingTimerRef =
+        useRef(null);
 
     const mountedRef =
         useRef(false);
 
-    const [connected, setConnected] =
-        useState(false);
-
-    /*
-     * ------------------------------------------------------------------------
-     * MESSAGE HANDLER
-     * ------------------------------------------------------------------------
-     */
-
-    const handleMessage = useCallback(
-        (event) => {
-            try {
-                const message =
-                    JSON.parse(event.data);
-
-                const eventType =
-                    message?.event;
-
-                const data =
-                    message?.data ?? message;
-
-                switch (eventType) {
-                    case "telemetry":
-                        if (onTelemetry) {
-                            onTelemetry(data);
-                        }
-                        break;
-
-                    case "health_update":
-                        if (onHealthUpdate) {
-                            onHealthUpdate(data);
-                        }
-                        break;
-
-                    case "alert":
-                        if (onAlert) {
-                            onAlert(data);
-                        }
-                        break;
-
-                    case "alert_status":
-                        if (onAlertStatus) {
-                            onAlertStatus(data);
-                        }
-                        break;
-
-                    case "intelligence_update":
-                    case "intelligence":
-                        if (onIntelligenceUpdate) {
-                            onIntelligenceUpdate(data);
-                        }
-                        break;
-
-                    case "connection":
-                        console.info(
-                            "HerdSense WebSocket connection confirmed"
-                        );
-                        break;
-
-                    case "pong":
-                        break;
-
-                    default:
-                        console.debug(
-                            "Unknown HerdSense WebSocket event:",
-                            eventType
-                        );
-                        break;
-                }
-            } catch (error) {
-                console.error(
-                    "HerdSense WebSocket message parsing error:",
-                    error
-                );
-            }
-        },
-        [
-            onTelemetry,
-            onHealthUpdate,
-            onAlert,
-            onAlertStatus,
-            onIntelligenceUpdate,
-        ]
-    );
-
-    /*
-     * ------------------------------------------------------------------------
-     * CONNECT
-     * ------------------------------------------------------------------------
-     */
-
-    const connect = useCallback(() => {
-        if (!enabled) {
-            return;
-        }
-
-        if (!mountedRef.current) {
-            return;
-        }
-
-        const existingSocket =
-            socketRef.current;
-
-        if (
-            existingSocket &&
-            (
-                existingSocket.readyState ===
-                    WebSocket.OPEN ||
-                existingSocket.readyState ===
-                    WebSocket.CONNECTING
-            )
-        ) {
-            return;
-        }
-
-        clearTimeout(
-            reconnectTimerRef.current
+    const reconnectDelayRef =
+        useRef(
+            INITIAL_RECONNECT_DELAY
         );
 
-        reconnectTimerRef.current =
-            null;
+    const connectingRef =
+        useRef(false);
 
-        try {
-            console.info(
-                "Connecting to HerdSense WebSocket:",
-                WS_URL
-            );
+    const callbackRef =
+        useRef(onTelemetry);
 
-            const socket =
-                new WebSocket(WS_URL);
+    const [
+        connected,
+        setConnected,
+    ] = useState(false);
 
-            socketRef.current =
-                socket;
+    /* ======================================================================
+       KEEP CALLBACK CURRENT
+    ====================================================================== */
 
-            /*
-             * ---------------------------------------------------------------
-             * OPEN
-             * ---------------------------------------------------------------
-             */
+    useEffect(() => {
+        callbackRef.current =
+            onTelemetry;
+    }, [onTelemetry]);
 
-            socket.onopen = () => {
-                if (!mountedRef.current) {
-                    return;
-                }
+    /* ======================================================================
+       CLEAR TIMERS
+    ====================================================================== */
 
-                console.info(
-                    "HerdSense WebSocket connected"
-                );
-
-                reconnectAttemptsRef.current =
-                    0;
-
-                setConnected(true);
-            };
-
-            /*
-             * ---------------------------------------------------------------
-             * MESSAGE
-             * ---------------------------------------------------------------
-             */
-
-            socket.onmessage =
-                handleMessage;
-
-            /*
-             * ---------------------------------------------------------------
-             * ERROR
-             * ---------------------------------------------------------------
-             */
-
-            socket.onerror = (
-                error
-            ) => {
-                if (!mountedRef.current) {
-                    return;
-                }
-
-                console.error(
-                    "HerdSense WebSocket error:",
-                    error
-                );
-            };
-
-            /*
-             * ---------------------------------------------------------------
-             * CLOSE
-             * ---------------------------------------------------------------
-             */
-
-            socket.onclose = (
-                event
-            ) => {
-                if (
-                    socketRef.current ===
-                    socket
-                ) {
-                    socketRef.current =
-                        null;
-                }
-
-                setConnected(false);
-
-                if (
-                    !mountedRef.current ||
-                    !enabled
-                ) {
-                    return;
-                }
-
-                reconnectAttemptsRef.current +=
-                    1;
-
-                const exponent =
-                    Math.min(
-                        reconnectAttemptsRef.current -
-                            1,
-                        MAX_RECONNECT_EXPONENT
-                    );
-
-                const delay =
-                    Math.min(
-                        INITIAL_RECONNECT_DELAY *
-                            2 ** exponent,
-                        MAX_RECONNECT_DELAY
-                    );
-
+    const clearTimers =
+        useCallback(() => {
+            if (
+                reconnectTimerRef.current
+            ) {
                 clearTimeout(
                     reconnectTimerRef.current
                 );
 
                 reconnectTimerRef.current =
-                    setTimeout(
-                        () => {
-                            if (
-                                mountedRef.current &&
-                                enabled
-                            ) {
-                                connect();
-                            }
-                        },
-                        delay
-                    );
-
-                console.warn(
-                    `HerdSense WebSocket disconnected ` +
-                    `(code ${event.code}). ` +
-                    `Reconnecting in ${delay}ms.`
-                );
-            };
-        } catch (error) {
-            console.error(
-                "HerdSense WebSocket connection failed:",
-                error
-            );
-
-            setConnected(false);
-
-            if (
-                !mountedRef.current ||
-                !enabled
-            ) {
-                return;
+                    null;
             }
 
-            reconnectAttemptsRef.current +=
-                1;
-
-            const exponent =
-                Math.min(
-                    reconnectAttemptsRef.current -
-                        1,
-                    MAX_RECONNECT_EXPONENT
+            if (
+                pingTimerRef.current
+            ) {
+                clearInterval(
+                    pingTimerRef.current
                 );
 
-            const delay =
-                Math.min(
-                    INITIAL_RECONNECT_DELAY *
-                        2 ** exponent,
-                    MAX_RECONNECT_DELAY
-                );
+                pingTimerRef.current =
+                    null;
+            }
+        }, []);
 
-            clearTimeout(
-                reconnectTimerRef.current
-            );
+    /* ======================================================================
+       CLOSE SOCKET
+    ====================================================================== */
 
-            reconnectTimerRef.current =
-                setTimeout(
-                    () => {
-                        if (
-                            mountedRef.current &&
-                            enabled
-                        ) {
-                            connect();
-                        }
-                    },
-                    delay
-                );
-        }
-    }, [
-        enabled,
-        handleMessage,
-    ]);
-
-    /*
-     * ------------------------------------------------------------------------
-     * DISCONNECT
-     * ------------------------------------------------------------------------
-     */
-
-    const disconnect =
+    const closeSocket =
         useCallback(() => {
-            clearTimeout(
-                reconnectTimerRef.current
-            );
-
-            reconnectTimerRef.current =
-                null;
-
-            reconnectAttemptsRef.current =
-                0;
-
             const socket =
                 socketRef.current;
 
-            if (socket) {
-                /*
-                 * Remove handlers first so intentional
-                 * shutdown does not trigger reconnect.
-                 */
+            if (!socket) {
+                return;
+            }
 
-                socket.onopen = null;
-                socket.onmessage = null;
-                socket.onerror = null;
-                socket.onclose = null;
+            try {
+                socket.onopen =
+                    null;
 
-                if (
-                    socket.readyState ===
-                        WebSocket.OPEN ||
-                    socket.readyState ===
-                        WebSocket.CONNECTING
-                ) {
-                    socket.close();
-                }
+                socket.onmessage =
+                    null;
+
+                socket.onerror =
+                    null;
+
+                socket.onclose =
+                    null;
+
+                socket.close();
+            } catch (
+                error
+            ) {
+                console.warn(
+                    "HerdSense WebSocket close error:",
+                    error
+                );
             }
 
             socketRef.current =
                 null;
-
-            setConnected(false);
         }, []);
 
-    /*
-     * ------------------------------------------------------------------------
-     * LIFECYCLE
-     * ------------------------------------------------------------------------
-     */
+    /* ======================================================================
+       CONNECT
+    ====================================================================== */
+
+    const connect =
+        useCallback(() => {
+            if (
+                !mountedRef.current
+            ) {
+                return;
+            }
+
+            if (
+                connectingRef.current
+            ) {
+                return;
+            }
+
+            const existingSocket =
+                socketRef.current;
+
+            if (
+                existingSocket &&
+                (
+                    existingSocket.readyState ===
+                        WebSocket.OPEN ||
+                    existingSocket.readyState ===
+                        WebSocket.CONNECTING
+                )
+            ) {
+                return;
+            }
+
+            connectingRef.current =
+                true;
+
+            console.log(
+                "🔵 Connecting HerdSense live data:",
+                WS_URL
+            );
+
+            try {
+                const socket =
+                    new WebSocket(
+                        WS_URL
+                    );
+
+                socketRef.current =
+                    socket;
+
+                socket.onopen =
+                    () => {
+                        if (
+                            !mountedRef.current
+                        ) {
+                            return;
+                        }
+
+                        connectingRef.current =
+                            false;
+
+                        reconnectDelayRef.current =
+                            INITIAL_RECONNECT_DELAY;
+
+                        setConnected(
+                            true
+                        );
+
+                        console.log(
+                            "🟢 HerdSense live data connected"
+                        );
+
+                        /*
+                         * Keep connection alive.
+                         */
+
+                        if (
+                            pingTimerRef.current
+                        ) {
+                            clearInterval(
+                                pingTimerRef.current
+                            );
+                        }
+
+                        pingTimerRef.current =
+                            setInterval(
+                                () => {
+                                    const activeSocket =
+                                        socketRef.current;
+
+                                    if (
+                                        activeSocket &&
+                                        activeSocket.readyState ===
+                                            WebSocket.OPEN
+                                    ) {
+                                        try {
+                                            activeSocket.send(
+                                                JSON.stringify(
+                                                    {
+                                                        event:
+                                                            "ping",
+                                                    }
+                                                )
+                                            );
+                                        } catch (
+                                            error
+                                        ) {
+                                            console.warn(
+                                                "HerdSense WebSocket ping failed:",
+                                                error
+                                            );
+                                        }
+                                    }
+                                },
+                                PING_INTERVAL
+                            );
+                    };
+
+                socket.onmessage =
+                    (event) => {
+                        if (
+                            !mountedRef.current
+                        ) {
+                            return;
+                        }
+
+                        let payload =
+                            event.data;
+
+                        try {
+                            payload =
+                                JSON.parse(
+                                    event.data
+                                );
+                        } catch {
+                            /*
+                             * Non-JSON WebSocket
+                             * messages are allowed.
+                             */
+                        }
+
+                        console.log(
+                            "📡 HerdSense live event:",
+                            payload
+                        );
+
+                        /*
+                         * Ignore heartbeat messages.
+                         */
+
+                        if (
+                            payload &&
+                            typeof payload ===
+                                "object" &&
+                            (
+                                payload.event ===
+                                    "pong" ||
+                                payload.type ===
+                                    "pong"
+                            )
+                        ) {
+                            return;
+                        }
+
+                        /*
+                         * Some backends wrap telemetry
+                         * inside `data`.
+                         */
+
+                        const telemetry =
+                            payload?.telemetry ??
+                            payload?.data ??
+                            payload;
+
+                        /*
+                         * Forward only useful
+                         * telemetry objects.
+                         */
+
+                        if (
+                            telemetry &&
+                            typeof telemetry ===
+                                "object"
+                        ) {
+                            const animalId =
+                                telemetry?.animal_id ??
+                                telemetry?.animalId ??
+                                telemetry?.animal?.id ??
+                                telemetry?.tag_id ??
+                                telemetry?.tagId;
+
+                            if (
+                                animalId !==
+                                    undefined &&
+                                animalId !==
+                                    null
+                            ) {
+                                callbackRef.current?.(
+                                    telemetry
+                                );
+                            }
+                        }
+                    };
+
+                socket.onerror =
+                    (error) => {
+                        console.error(
+                            "🔴 HerdSense WebSocket error:",
+                            error
+                        );
+
+                        setConnected(
+                            false
+                        );
+                    };
+
+                socket.onclose =
+                    (event) => {
+                        connectingRef.current =
+                            false;
+
+                        if (
+                            pingTimerRef.current
+                        ) {
+                            clearInterval(
+                                pingTimerRef.current
+                            );
+
+                            pingTimerRef.current =
+                                null;
+                        }
+
+                        if (
+                            socketRef.current ===
+                            socket
+                        ) {
+                            socketRef.current =
+                                null;
+                        }
+
+                        setConnected(
+                            false
+                        );
+
+                        if (
+                            !mountedRef.current
+                        ) {
+                            return;
+                        }
+
+                        console.warn(
+                            "🔌 HerdSense live monitoring disconnected:",
+                            event?.code,
+                            event?.reason
+                        );
+
+                        const delay =
+                            reconnectDelayRef.current;
+
+                        reconnectDelayRef.current =
+                            Math.min(
+                                delay * 2,
+                                MAX_RECONNECT_DELAY
+                            );
+
+                        reconnectTimerRef.current =
+                            setTimeout(
+                                () => {
+                                    connect();
+                                },
+                                delay
+                            );
+                    };
+            } catch (
+                error
+            ) {
+                connectingRef.current =
+                    false;
+
+                setConnected(
+                    false
+                );
+
+                console.error(
+                    "HerdSense WebSocket connection failed:",
+                    error
+                );
+
+                if (
+                    mountedRef.current
+                ) {
+                    const delay =
+                        reconnectDelayRef.current;
+
+                    reconnectDelayRef.current =
+                        Math.min(
+                            delay * 2,
+                            MAX_RECONNECT_DELAY
+                        );
+
+                    reconnectTimerRef.current =
+                        setTimeout(
+                            () => {
+                                connect();
+                            },
+                            delay
+                        );
+                }
+            }
+        }, []);
+
+    /* ======================================================================
+       LIFECYCLE
+    ====================================================================== */
 
     useEffect(() => {
         mountedRef.current =
             true;
 
-        if (enabled) {
-            connect();
-        }
+        connect();
 
         return () => {
             mountedRef.current =
                 false;
 
-            disconnect();
+            clearTimers();
+
+            closeSocket();
+
+            setConnected(
+                false
+            );
         };
     }, [
-        enabled,
         connect,
-        disconnect,
+        clearTimers,
+        closeSocket,
     ]);
 
-    /*
-     * ------------------------------------------------------------------------
-     * RETURN API
-     * ------------------------------------------------------------------------
-     */
+    /* ======================================================================
+       RETURN
+    ====================================================================== */
 
     return {
         connected,
-        connect,
-        disconnect,
+        reconnect: connect,
+        url: WS_URL,
     };
 }

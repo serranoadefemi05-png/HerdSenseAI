@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
-import bcrypt
-from jose import jwt
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 from app.core.config import settings
 
@@ -10,171 +11,81 @@ from app.core.config import settings
 # PASSWORD HASHING
 # =============================================================================
 
-def hash_password(
-    password: str,
-) -> str:
-    """
-    Hash a plaintext password using bcrypt.
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+)
 
-    bcrypt accepts a maximum of 72 bytes.
-    """
 
-    if not isinstance(
-        password,
-        str,
-    ):
-        raise TypeError(
-            "Password must be a string."
-        )
+def hash_password(password: str) -> str:
 
-    password_bytes = password.encode(
-        "utf-8"
+    return pwd_context.hash(
+        password
     )
 
-    if len(password_bytes) > 72:
-
-        raise ValueError(
-            "Password is too long. "
-            "bcrypt passwords must not exceed 72 bytes."
-        )
-
-    hashed = bcrypt.hashpw(
-        password_bytes,
-        bcrypt.gensalt(),
-    )
-
-    return hashed.decode(
-        "utf-8"
-    )
-
-
-# =============================================================================
-# PASSWORD VERIFICATION
-# =============================================================================
 
 def verify_password(
     plain_password: str,
     hashed_password: str,
 ) -> bool:
-    """
-    Verify a plaintext password against a bcrypt hash.
-    """
 
-    if not isinstance(
+    return pwd_context.verify(
         plain_password,
-        str,
-    ):
-        return False
-
-    if not isinstance(
         hashed_password,
-        str,
-    ):
-        return False
-
-    password_bytes = plain_password.encode(
-        "utf-8"
     )
-
-    hashed_bytes = hashed_password.encode(
-        "utf-8"
-    )
-
-    if len(password_bytes) > 72:
-        return False
-
-    try:
-
-        return bcrypt.checkpw(
-            password_bytes,
-            hashed_bytes,
-        )
-
-    except (
-        ValueError,
-        TypeError,
-        bcrypt.error,
-    ):
-
-        return False
 
 
 # =============================================================================
-# USER AUTHENTICATION
+# JWT
 # =============================================================================
 
-def authenticate_user(
-    db,
-    User,
-    email: str,
-    password: str,
-):
-    """
-    Authenticate a user by email and password.
-
-    Returns:
-        User object if authentication succeeds.
-        None otherwise.
-    """
-
-    normalized_email = (
-        email
-        .strip()
-        .lower()
-    )
-
-    user = (
-        db.query(User)
-        .filter(
-            User.email == normalized_email
-        )
-        .first()
-    )
-
-    if not user:
-        return None
-
-    if not verify_password(
-        password,
-        user.hashed_password,
-    ):
-        return None
-
-    return user
-
-
-# =============================================================================
-# JWT ACCESS TOKEN
-# =============================================================================
 
 def create_access_token(
-    data: dict,
+    data: dict[str, Any],
+    expires_delta: timedelta | None = None,
 ) -> str:
-    """
-    Create a signed JWT access token.
-    """
 
-    to_encode = data.copy()
+    payload = data.copy()
 
-    expire = (
-        datetime.now(
-            timezone.utc
+    if expires_delta:
+
+        expire = (
+            datetime.now(timezone.utc)
+            + expires_delta
         )
-        + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+
+    else:
+
+        expire = (
+            datetime.now(timezone.utc)
+            + timedelta(
+                minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+            )
         )
-    )
 
-    to_encode.update(
-        {
-            "exp": expire,
-        }
-    )
+    payload["exp"] = expire
 
-    encoded_jwt = jwt.encode(
-        to_encode,
+    return jwt.encode(
+        payload,
         settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
     )
 
-    return encoded_jwt
+
+def decode_access_token(
+    token: str,
+) -> dict[str, Any] | None:
+
+    try:
+
+        return jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[
+                settings.JWT_ALGORITHM
+            ],
+        )
+
+    except JWTError:
+
+        return None
