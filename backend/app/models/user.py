@@ -84,6 +84,25 @@ class User(Base):
     )
 
     # =========================================================================
+    # COMPATIBILITY PROPERTY
+    # =========================================================================
+    #
+    # Existing authentication code uses `user.is_verified`,
+    # while the database column is `email_verified`.
+    #
+    # This property keeps both names working without changing
+    # the PostgreSQL schema.
+    #
+
+    @property
+    def is_verified(self):
+        return self.email_verified
+
+    @is_verified.setter
+    def is_verified(self, value):
+        self.email_verified = value
+
+    # =========================================================================
     # RELATIONSHIPS
     # =========================================================================
 

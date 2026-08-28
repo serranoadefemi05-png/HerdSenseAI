@@ -1,17 +1,23 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import Login from "./pages/Login";
+
 import Dashboard from "./pages/Dashboard";
 import Alerts from "./pages/Alerts";
+
 import Animals from "./pages/Animals";
 import AnimalRegistration from "./pages/AnimalRegistration";
 import AnimalIntelligence from "./pages/AnimalIntelligence";
+import AnimalVerification from "./pages/AnimalVerification";
+
 import ManualTelemetry from "./pages/ManualTelemetry";
 import Telemetry from "./pages/Telemetry";
+
 import Map from "./pages/Map";
 
 import HealthAnalytics from "./pages/HealthAnalytics";
 import DiseasePrediction from "./pages/DiseasePrediction";
+
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 
@@ -20,7 +26,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 
 /* ============================================================================
    PROTECTED ROUTE
-   ============================================================================ */
+============================================================================ */
 
 function ProtectedRoute({ children }) {
     const token = localStorage.getItem("access_token");
@@ -40,18 +46,11 @@ function ProtectedRoute({ children }) {
 
 /* ============================================================================
    ADMIN ROUTE
-   ============================================================================ */
+============================================================================ */
 
 function AdminRoute({ children }) {
-    const token =
-        localStorage.getItem("access_token");
-
-    const role =
-        localStorage.getItem("user_role");
-
-    /*
-     * No authentication
-     */
+    const token = localStorage.getItem("access_token");
+    const role = localStorage.getItem("user_role");
 
     if (!token) {
         return (
@@ -62,11 +61,6 @@ function AdminRoute({ children }) {
         );
     }
 
-
-    /*
-     * Authenticated but not administrator
-     */
-
     if (role !== "admin") {
         return (
             <Navigate
@@ -76,22 +70,21 @@ function AdminRoute({ children }) {
         );
     }
 
-
     return children;
 }
 
 
 /* ============================================================================
    APPLICATION ROUTES
-   ============================================================================ */
+============================================================================ */
 
 export default function AppRoutes() {
     return (
         <Routes>
 
-            {/* ==================================================================
-                AUTHENTICATION
-            ================================================================== */}
+            {/* =================================================================
+                PUBLIC ROUTES
+            ================================================================= */}
 
             <Route
                 path="/login"
@@ -99,9 +92,24 @@ export default function AppRoutes() {
             />
 
 
-            {/* ==================================================================
+            {/* =================================================================
+                PUBLIC BLOCKCHAIN ANIMAL VERIFICATION
+
+                Example:
+                    /verify/animal/8
+            ================================================================= */}
+
+            <Route
+                path="/verify/animal/:id"
+                element={
+                    <AnimalVerification />
+                }
+            />
+
+
+            {/* =================================================================
                 ADMIN COMMAND CENTER
-            ================================================================== */}
+            ================================================================= */}
 
             <Route
                 path="/admin"
@@ -113,9 +121,9 @@ export default function AppRoutes() {
             />
 
 
-            {/* ==================================================================
+            {/* =================================================================
                 FARMER COMMAND CENTER
-            ================================================================== */}
+            ================================================================= */}
 
             <Route
                 path="/dashboard"
@@ -127,9 +135,9 @@ export default function AppRoutes() {
             />
 
 
-            {/* ==================================================================
-                OPERATIONS
-            ================================================================== */}
+            {/* =================================================================
+                ANIMAL OPERATIONS
+            ================================================================= */}
 
             <Route
                 path="/animals"
@@ -149,6 +157,46 @@ export default function AppRoutes() {
                 }
             />
 
+            {/* -----------------------------------------------------------------
+                PRIMARY ANIMAL INTELLIGENCE ROUTE
+
+                Example:
+                    /animals/8
+            ----------------------------------------------------------------- */}
+
+            <Route
+                path="/animals/:id"
+                element={
+                    <ProtectedRoute>
+                        <AnimalIntelligence />
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* -----------------------------------------------------------------
+                DEDICATED ANIMAL INTELLIGENCE ROUTE
+
+                Example:
+                    /animals/8/intelligence
+
+                This intentionally renders the same production
+                AnimalIntelligence interface.
+            ----------------------------------------------------------------- */}
+
+            <Route
+                path="/animals/:id/intelligence"
+                element={
+                    <ProtectedRoute>
+                        <AnimalIntelligence />
+                    </ProtectedRoute>
+                }
+            />
+
+
+            {/* =================================================================
+                TELEMETRY
+            ================================================================= */}
+
             <Route
                 path="/telemetry"
                 element={
@@ -166,6 +214,11 @@ export default function AppRoutes() {
                     </ProtectedRoute>
                 }
             />
+
+
+            {/* =================================================================
+                LOCATION & MONITORING
+            ================================================================= */}
 
             <Route
                 path="/map"
@@ -186,23 +239,9 @@ export default function AppRoutes() {
             />
 
 
-            {/* ==================================================================
-                ANIMAL INTELLIGENCE
-            ================================================================== */}
-
-            <Route
-                path="/animals/:id"
-                element={
-                    <ProtectedRoute>
-                        <AnimalIntelligence />
-                    </ProtectedRoute>
-                }
-            />
-
-
-            {/* ==================================================================
+            {/* =================================================================
                 INTELLIGENCE
-            ================================================================== */}
+            ================================================================= */}
 
             <Route
                 path="/analytics"
@@ -222,6 +261,11 @@ export default function AppRoutes() {
                 }
             />
 
+
+            {/* =================================================================
+                REPORTING
+            ================================================================= */}
+
             <Route
                 path="/reports"
                 element={
@@ -232,9 +276,9 @@ export default function AppRoutes() {
             />
 
 
-            {/* ==================================================================
+            {/* =================================================================
                 SYSTEM
-            ================================================================== */}
+            ================================================================= */}
 
             <Route
                 path="/settings"
@@ -246,9 +290,9 @@ export default function AppRoutes() {
             />
 
 
-            {/* ==================================================================
-                ROOT
-            ================================================================== */}
+            {/* =================================================================
+                ROOT ROUTE
+            ================================================================= */}
 
             <Route
                 path="/"
@@ -261,9 +305,9 @@ export default function AppRoutes() {
             />
 
 
-            {/* ==================================================================
+            {/* =================================================================
                 UNKNOWN ROUTES
-            ================================================================== */}
+            ================================================================= */}
 
             <Route
                 path="*"

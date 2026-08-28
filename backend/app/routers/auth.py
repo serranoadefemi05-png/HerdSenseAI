@@ -42,8 +42,11 @@ router = APIRouter(
 
 
 def get_configured_admins() -> list[tuple[str, str]]:
+    """
+    Return administrator credentials configured in application settings.
+    """
 
-    admins = []
+    admins: list[tuple[str, str]] = []
 
     admin_email = str(
         getattr(settings, "ADMIN_EMAIL", "")
@@ -56,7 +59,6 @@ def get_configured_admins() -> list[tuple[str, str]]:
     )
 
     if admin_email and admin_password:
-
         admins.append(
             (
                 admin_email,
@@ -75,7 +77,6 @@ def get_configured_admins() -> list[tuple[str, str]]:
     )
 
     if admin_email_2 and admin_password_2:
-
         admins.append(
             (
                 admin_email_2,
@@ -89,6 +90,9 @@ def get_configured_admins() -> list[tuple[str, str]]:
 def is_configured_admin_email(
     email: str,
 ) -> bool:
+    """
+    Check whether an email belongs to a configured administrator.
+    """
 
     normalized_email = (
         email.strip().lower()
@@ -96,8 +100,7 @@ def is_configured_admin_email(
 
     return any(
         normalized_email == admin_email
-        for admin_email, _
-        in get_configured_admins()
+        for admin_email, _ in get_configured_admins()
     )
 
 
@@ -109,24 +112,28 @@ def is_configured_admin_email(
 def provision_admin_accounts(
     db: Session,
 ) -> None:
+    """
+    Ensure configured administrator accounts exist and are correctly
+    configured.
+
+    IMPORTANT:
+    The User model uses `email_verified`, not `is_verified`.
+    """
 
     configured_admins = (
         get_configured_admins()
     )
 
     if not configured_admins:
-
         print(
             "⚠️ HerdSense AI: "
             "No administrator credentials configured."
         )
-
         return
 
     for admin_email, admin_password in configured_admins:
 
         try:
-
             existing_user = (
                 db.query(User)
                 .filter(
@@ -134,6 +141,10 @@ def provision_admin_accounts(
                 )
                 .first()
             )
+
+            # -----------------------------------------------------------------
+            # CREATE ADMIN
+            # -----------------------------------------------------------------
 
             if existing_user is None:
 
@@ -146,10 +157,7 @@ def provision_admin_accounts(
                         admin_password
                     ),
                     role="admin",
-                    is_verified=True,
-                    verified_at=datetime.now(
-                        timezone.utc
-                    ),
+                    email_verified=True,
                 )
 
                 db.add(admin_user)
@@ -162,37 +170,51 @@ def provision_admin_accounts(
 
                 continue
 
+            # -----------------------------------------------------------------
+            # UPDATE EXISTING ADMIN
+            # -----------------------------------------------------------------
+
             changed = False
 
             if existing_user.role != "admin":
-
                 existing_user.role = "admin"
                 changed = True
 
-            if not existing_user.is_verified:
-
-                existing_user.is_verified = True
-
-                existing_user.verified_at = (
-                    datetime.now(timezone.utc)
-                )
-
+            if not existing_user.email_verified:
+                existing_user.email_verified = True
                 changed = True
 
-            if not verify_password(
-                admin_password,
-                existing_user.hashed_password,
-            ):
-
+            # Only attempt password verification when the stored hash exists.
+            if not existing_user.hashed_password:
                 existing_user.hashed_password = (
                     hash_password(admin_password)
                 )
-
                 changed = True
 
-            if changed:
+            else:
+                try:
+                    password_matches = verify_password(
+                        admin_password,
+                        existing_user.hashed_password,
+                    )
+                except Exception as exc:
+                    print(
+                        "⚠️ HerdSense AI: "
+                        "Unable to verify existing administrator "
+                        f"password for {admin_email}: {exc!r}"
+                    )
 
+                    password_matches = False
+
+                if not password_matches:
+                    existing_user.hashed_password = (
+                        hash_password(admin_password)
+                    )
+                    changed = True
+
+            if changed:
                 db.commit()
+                db.refresh(existing_user)
 
             print(
                 f"✅ HerdSense AI: "
@@ -204,7 +226,7 @@ def provision_admin_accounts(
             db.rollback()
 
             print(
-                f"❌ HerdSense AI admin provisioning error "
+                "❌ HerdSense AI admin provisioning error "
                 f"for {admin_email}:",
                 repr(exc),
             )
@@ -218,11 +240,13 @@ def provision_admin_accounts(
 def create_verification_token(
     email: str,
 ) -> str:
+    """
+    Create a signed email verification JWT valid for 24 hours.
+    """
 
-    expire = datetime.now(
-        timezone.utc
-    ) + timedelta(
-        hours=24
+    expire = (
+        datetime.now(timezone.utc)
+        + timedelta(hours=24)
     )
 
     payload = {
@@ -252,6 +276,12 @@ def register(
     user: UserCreate,
     db: Session = Depends(get_db),
 ):
+    """
+    Register a new farmer account.
+
+    New accounts are unverified until the email verification link
+    is successfully used.
+    """
 
     email = (
         str(user.email)
@@ -263,22 +293,23 @@ def register(
         user.full_name.strip()
     )
 
-    if not full_name:
+    # -------------------------------------------------------------------------
+    # VALIDATION
+    # -------------------------------------------------------------------------
 
+    if not full_name:
         raise HTTPException(
             status_code=400,
             detail="Full name is required.",
         )
 
     if len(user.password) < 8:
-
         raise HTTPException(
             status_code=400,
             detail="Password must be at least 8 characters.",
         )
 
     if is_configured_admin_email(email):
-
         raise HTTPException(
             status_code=403,
             detail=(
@@ -286,6 +317,10 @@ def register(
                 "and cannot be registered."
             ),
         )
+
+    # -------------------------------------------------------------------------
+    # CHECK EXISTING USER
+    # -------------------------------------------------------------------------
 
     existing_user = (
         db.query(User)
@@ -296,11 +331,14 @@ def register(
     )
 
     if existing_user:
-
         raise HTTPException(
             status_code=400,
             detail="Email already registered.",
         )
+
+    # -------------------------------------------------------------------------
+    # CREATE USER
+    # -------------------------------------------------------------------------
 
     new_user = User(
         email=email,
@@ -309,16 +347,13 @@ def register(
             user.password
         ),
         role="farmer",
-        is_verified=False,
-        verified_at=None,
+        email_verified=False,
     )
 
     db.add(new_user)
 
     try:
-
         db.commit()
-
         db.refresh(new_user)
 
     except Exception as exc:
@@ -358,7 +393,15 @@ def register(
             verification_url=verification_url,
         )
 
+        print(
+            f"📧 HerdSense AI: "
+            f"Verification email sent to {new_user.email}"
+        )
+
     except Exception as exc:
+
+        # The account has already been created.
+        # Do not delete the account simply because email delivery failed.
 
         print(
             "❌ HerdSense AI verification email error:",
@@ -378,6 +421,9 @@ def verify_email(
     token: str,
     db: Session = Depends(get_db),
 ):
+    """
+    Verify a user's email address using the signed verification token.
+    """
 
     try:
 
@@ -390,7 +436,6 @@ def verify_email(
         )
 
         if payload.get("purpose") != "email_verification":
-
             raise HTTPException(
                 status_code=400,
                 detail="Invalid verification token.",
@@ -399,11 +444,13 @@ def verify_email(
         email = payload.get("sub")
 
         if not email:
-
             raise HTTPException(
                 status_code=400,
                 detail="Invalid verification token.",
             )
+
+    except HTTPException:
+        raise
 
     except JWTError:
 
@@ -414,6 +461,10 @@ def verify_email(
             ),
         )
 
+    # -------------------------------------------------------------------------
+    # FIND USER
+    # -------------------------------------------------------------------------
+
     user = (
         db.query(User)
         .filter(
@@ -423,23 +474,23 @@ def verify_email(
     )
 
     if not user:
-
         raise HTTPException(
             status_code=404,
             detail="User account not found.",
         )
 
-    if not user.is_verified:
+    # -------------------------------------------------------------------------
+    # MARK EMAIL VERIFIED
+    # -------------------------------------------------------------------------
 
-        user.is_verified = True
+    if not user.email_verified:
 
-        user.verified_at = (
-            datetime.now(timezone.utc)
-        )
+        user.email_verified = True
 
         try:
 
             db.commit()
+            db.refresh(user)
 
         except Exception as exc:
 
@@ -456,7 +507,8 @@ def verify_email(
             )
 
     return {
-        "message": "Email verified successfully."
+        "message": "Email verified successfully.",
+        "email": user.email,
     }
 
 
@@ -470,6 +522,11 @@ def resend_verification(
     email: str,
     db: Session = Depends(get_db),
 ):
+    """
+    Resend an email verification link.
+
+    The response deliberately does not reveal whether an account exists.
+    """
 
     normalized_email = (
         email.strip().lower()
@@ -483,7 +540,7 @@ def resend_verification(
         .first()
     )
 
-    if user and not user.is_verified:
+    if user and not user.email_verified:
 
         try:
 
@@ -500,6 +557,11 @@ def resend_verification(
                 recipient=user.email,
                 full_name=user.full_name,
                 verification_url=verification_url,
+            )
+
+            print(
+                f"📧 HerdSense AI: "
+                f"Verification email resent to {user.email}"
             )
 
         except Exception as exc:
@@ -530,6 +592,9 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
+    """
+    Authenticate a user and return a JWT access token.
+    """
 
     email = (
         str(form_data.username)
@@ -539,8 +604,11 @@ def login(
 
     password = form_data.password
 
-    if not email or not password:
+    # -------------------------------------------------------------------------
+    # BASIC VALIDATION
+    # -------------------------------------------------------------------------
 
+    if not email or not password:
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password.",
@@ -548,6 +616,10 @@ def login(
                 "WWW-Authenticate": "Bearer",
             },
         )
+
+    # -------------------------------------------------------------------------
+    # FIND USER
+    # -------------------------------------------------------------------------
 
     user = (
         db.query(User)
@@ -558,7 +630,6 @@ def login(
     )
 
     if user is None:
-
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password.",
@@ -567,11 +638,47 @@ def login(
             },
         )
 
-    if not verify_password(
-        password,
-        user.hashed_password,
-    ):
+    # -------------------------------------------------------------------------
+    # PASSWORD VERIFICATION
+    # -------------------------------------------------------------------------
 
+    try:
+
+        password_valid = verify_password(
+            password,
+            user.hashed_password,
+        )
+
+    except ValueError as exc:
+
+        # bcrypt/passlib compatibility errors should not become
+        # unexplained 500 errors at the API boundary.
+
+        print(
+            "❌ HerdSense AI password verification error:",
+            repr(exc),
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Password verification service is temporarily unavailable."
+            ),
+        )
+
+    except Exception as exc:
+
+        print(
+            "❌ HerdSense AI authentication error:",
+            repr(exc),
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Authentication service error.",
+        )
+
+    if not password_valid:
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password.",
@@ -588,19 +695,14 @@ def login(
 
         changed = False
 
+        # Force configured administrator accounts to admin role.
         if user.role != "admin":
-
             user.role = "admin"
             changed = True
 
-        if not user.is_verified:
-
-            user.is_verified = True
-
-            user.verified_at = (
-                datetime.now(timezone.utc)
-            )
-
+        # Configured administrators are automatically email verified.
+        if not user.email_verified:
+            user.email_verified = True
             changed = True
 
         if changed:
@@ -610,9 +712,14 @@ def login(
                 db.commit()
                 db.refresh(user)
 
-            except Exception:
+            except Exception as exc:
 
                 db.rollback()
+
+                print(
+                    "❌ HerdSense AI administrator validation error:",
+                    repr(exc),
+                )
 
                 raise HTTPException(
                     status_code=500,
@@ -625,7 +732,7 @@ def login(
     # EMAIL VERIFICATION CHECK
     # =========================================================================
 
-    if not user.is_verified:
+    if not user.email_verified:
 
         raise HTTPException(
             status_code=403,
@@ -636,7 +743,7 @@ def login(
         )
 
     # =========================================================================
-    # JWT
+    # CREATE JWT
     # =========================================================================
 
     access_token = create_access_token(
@@ -646,12 +753,35 @@ def login(
         }
     )
 
+    # =========================================================================
+    # TOKEN USER
+    # =========================================================================
+    #
+    # IMPORTANT:
+    # TokenUser requires `is_email_verified`.
+    # The SQLAlchemy User model uses `email_verified`.
+    #
+    # Therefore:
+    #
+    #     user.email_verified
+    #
+    # becomes:
+    #
+    #     is_email_verified=user.email_verified
+    #
+    # =========================================================================
+
     authenticated_user = TokenUser(
         id=user.id,
         email=user.email,
         full_name=user.full_name,
         role=user.role,
+        is_email_verified=user.email_verified,
     )
+
+    # =========================================================================
+    # RESPONSE
+    # =========================================================================
 
     return Token(
         access_token=access_token,

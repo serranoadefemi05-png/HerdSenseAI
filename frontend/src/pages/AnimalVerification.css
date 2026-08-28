@@ -1,0 +1,762 @@
+/* ============================================================================
+   HERDSENSE AI — DIGITAL ANIMAL VERIFICATION
+============================================================================ */
+
+.verification-page {
+    min-height: 100vh;
+    background:
+        radial-gradient(
+            circle at 50% -20%,
+            rgba(255, 255, 255, 0.045),
+            transparent 42%
+        ),
+        #080a0d;
+    color: #f5f7fa;
+    padding: 48px 24px;
+    box-sizing: border-box;
+}
+
+
+/* ============================================================================
+   SHELL
+============================================================================ */
+
+.verification-shell {
+    width: min(1080px, 100%);
+    margin: 0 auto;
+}
+
+
+/* ============================================================================
+   HEADER
+============================================================================ */
+
+.verification-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.verification-brand {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+}
+
+.verification-subtitle {
+    margin-top: 6px;
+    color: #8d96a3;
+    font-size: 13px;
+}
+
+
+/* ============================================================================
+   VERIFICATION STATUS
+============================================================================ */
+
+.verification-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 13px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
+.verification-status.verified {
+    color: #d9ffe7;
+    border-color: rgba(103, 255, 157, 0.18);
+    background: rgba(103, 255, 157, 0.035);
+}
+
+.verification-status.failed {
+    color: #ffd8d8;
+    border-color: rgba(255, 107, 107, 0.18);
+    background: rgba(255, 107, 107, 0.035);
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 12px currentColor;
+    flex: 0 0 7px;
+}
+
+
+/* ============================================================================
+   HERO
+============================================================================ */
+
+.verification-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+    padding: 72px 0 64px;
+}
+
+.verification-eyebrow {
+    display: block;
+    margin-bottom: 14px;
+    color: #89929e;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+}
+
+.verification-hero h1 {
+    margin: 0;
+    font-size: clamp(42px, 7vw, 78px);
+    line-height: 0.95;
+    letter-spacing: -0.055em;
+}
+
+.verification-tag {
+    margin: 18px 0 0;
+    color: #89929e;
+    font-size: 14px;
+}
+
+.verification-tag strong {
+    color: #e8ebef;
+}
+
+
+/* ============================================================================
+   VERIFICATION BADGE
+============================================================================ */
+
+.verification-badge {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 280px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.025);
+    box-sizing: border-box;
+    backdrop-filter: blur(16px);
+}
+
+.badge-check,
+.proof-check {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    font-weight: 900;
+}
+
+.verification-badge strong {
+    display: block;
+    font-size: 13px;
+}
+
+.verification-badge span:last-child {
+    display: block;
+    margin-top: 4px;
+    color: #89929e;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+
+/* ============================================================================
+   SECTIONS
+============================================================================ */
+
+.verification-section {
+    padding: 34px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.section-heading span {
+    color: #707985;
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.section-heading h2 {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+}
+
+
+/* ============================================================================
+   INFORMATION GRID
+============================================================================ */
+
+.verification-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.verification-info {
+    min-height: 88px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.025);
+    box-sizing: border-box;
+    transition:
+        border-color 180ms ease,
+        background 180ms ease,
+        transform 180ms ease;
+}
+
+.verification-info:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.035);
+    transform: translateY(-1px);
+}
+
+.verification-info span {
+    display: block;
+    margin-bottom: 10px;
+    color: #747e8a;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.verification-info strong {
+    display: block;
+    color: #eef1f4;
+    font-size: 15px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+
+/* ============================================================================
+   EMPTY STATE
+============================================================================ */
+
+.verification-empty {
+    padding: 22px;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    color: #89929e;
+    font-size: 13px;
+    background: rgba(255, 255, 255, 0.012);
+}
+
+
+/* ============================================================================
+   BLOCKCHAIN PROOF
+============================================================================ */
+
+.blockchain-section {
+    padding-bottom: 42px;
+}
+
+.proof-status {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 20px;
+    border: 1px solid rgba(103, 255, 157, 0.12);
+    border-radius: 14px;
+    background: rgba(103, 255, 157, 0.025);
+    margin-bottom: 14px;
+}
+
+.proof-status strong {
+    display: block;
+    color: #e9fff0;
+    font-size: 13px;
+}
+
+.proof-status p {
+    margin: 7px 0 0;
+    color: #89929e;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+
+/* ============================================================================
+   FAILED BLOCKCHAIN PROOF
+============================================================================ */
+
+.verification-proof-failed {
+    border-color: rgba(255, 107, 107, 0.14);
+    background: rgba(255, 107, 107, 0.025);
+}
+
+.verification-proof-failed strong {
+    color: #ffe1e1;
+}
+
+
+/* ============================================================================
+   PROOF LIST
+============================================================================ */
+
+.proof-list {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.proof-row {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 20px;
+    padding: 15px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.proof-row:last-child {
+    border-bottom: 0;
+}
+
+.proof-row > span {
+    color: #747e8a;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.proof-row code {
+    min-width: 0;
+    color: #dce2e8;
+    font-family:
+        "SFMono-Regular",
+        Consolas,
+        "Liberation Mono",
+        monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    word-break: break-all;
+}
+
+
+/* ============================================================================
+   BLOCKCHAIN EXPLORER
+============================================================================ */
+
+.verification-explorer {
+    margin-top: 14px;
+}
+
+.verification-explorer a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #e8ebef;
+    background: rgba(255, 255, 255, 0.025);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition:
+        background 180ms ease,
+        border-color 180ms ease,
+        transform 180ms ease;
+}
+
+.verification-explorer a:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-1px);
+}
+
+.verification-explorer a span {
+    color: #9ca5b0;
+    font-size: 14px;
+}
+
+
+/* ============================================================================
+   VERIFICATION SUMMARY
+============================================================================ */
+
+.verification-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.035),
+            rgba(255, 255, 255, 0.015)
+        );
+}
+
+.verification-summary .verification-eyebrow {
+    margin-bottom: 8px;
+}
+
+.verification-summary strong {
+    display: block;
+    color: #eef1f4;
+    font-size: 15px;
+}
+
+.verification-summary-network {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #b8c0c9;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+
+/* ============================================================================
+   FOOTER
+============================================================================ */
+
+.verification-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 32px 0 12px;
+    color: #7b8591;
+    font-size: 11px;
+}
+
+.verification-footer strong {
+    display: block;
+    color: #dce2e8;
+    font-size: 12px;
+}
+
+.verification-footer span {
+    display: block;
+    margin-top: 4px;
+}
+
+.footer-network {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+/* ============================================================================
+   ERROR STATE
+============================================================================ */
+
+.verification-error {
+    max-width: 600px;
+    margin: 12vh auto;
+    padding: 40px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.025);
+    box-sizing: border-box;
+}
+
+.verification-icon {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 20px;
+    border: 1px solid rgba(255, 107, 107, 0.15);
+    border-radius: 50%;
+    background: rgba(255, 107, 107, 0.05);
+    color: #ffd8d8;
+    font-weight: 900;
+}
+
+.verification-error h1 {
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: -0.03em;
+}
+
+.verification-error p {
+    max-width: 480px;
+    margin: 14px auto 0;
+    color: #89929e;
+    line-height: 1.6;
+}
+
+
+/* ============================================================================
+   RETRY BUTTON
+============================================================================ */
+
+.verification-retry {
+    margin-top: 24px;
+    padding: 11px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #f5f7fa;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background 180ms ease,
+        border-color 180ms ease,
+        transform 180ms ease;
+}
+
+.verification-retry:hover {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.verification-retry:active {
+    transform: translateY(0);
+}
+
+
+/* ============================================================================
+   LOADING STATE
+============================================================================ */
+
+.verification-loader {
+    min-height: 50vh;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 10px;
+    color: #89929e;
+    text-align: center;
+}
+
+.verification-loader .verification-eyebrow {
+    margin: 8px 0 0;
+}
+
+.verification-loader p {
+    margin: 0;
+    color: #c7cdd4;
+    font-size: 14px;
+}
+
+.verification-loader small {
+    color: #69727e;
+    font-size: 11px;
+}
+
+
+/* ============================================================================
+   SPINNER
+============================================================================ */
+
+.verification-spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: verification-spin 0.8s linear infinite;
+}
+
+@keyframes verification-spin {
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* ============================================================================
+   ACCESSIBILITY
+============================================================================ */
+
+.verification-retry:focus-visible,
+.verification-explorer a:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.65);
+    outline-offset: 3px;
+}
+
+
+/* ============================================================================
+   TABLET
+============================================================================ */
+
+@media (max-width: 900px) {
+
+    .verification-page {
+        padding: 36px 20px;
+    }
+
+    .verification-hero {
+        padding: 58px 0 52px;
+    }
+
+    .verification-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+
+/* ============================================================================
+   MOBILE
+============================================================================ */
+
+@media (max-width: 800px) {
+
+    .verification-page {
+        padding: 24px 16px;
+    }
+
+
+    .verification-header {
+        align-items: flex-start;
+        flex-direction: column;
+        padding-bottom: 24px;
+    }
+
+
+    .verification-status {
+        align-self: flex-start;
+    }
+
+
+    .verification-hero {
+        display: block;
+        padding: 48px 0;
+    }
+
+
+    .verification-hero h1 {
+        font-size: clamp(44px, 14vw, 64px);
+    }
+
+
+    .verification-badge {
+        margin-top: 32px;
+        min-width: 0;
+        width: 100%;
+    }
+
+
+    .proof-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+
+    .verification-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+
+    .verification-summary-network {
+        white-space: normal;
+    }
+
+}
+
+
+/* ============================================================================
+   SMALL MOBILE
+============================================================================ */
+
+@media (max-width: 480px) {
+
+    .verification-page {
+        padding: 18px 12px;
+    }
+
+
+    .verification-grid {
+        grid-template-columns: 1fr;
+    }
+
+
+    .verification-hero {
+        padding: 40px 0;
+    }
+
+
+    .verification-hero h1 {
+        font-size: 48px;
+    }
+
+
+    .verification-section {
+        padding: 28px 0;
+    }
+
+
+    .verification-info {
+        min-height: 82px;
+        padding: 16px;
+    }
+
+
+    .proof-status {
+        padding: 16px;
+    }
+
+
+    .verification-summary {
+        padding: 20px;
+    }
+
+
+    .verification-footer {
+        flex-direction: column;
+        padding-top: 28px;
+    }
+
+
+    .verification-error {
+        margin: 8vh auto;
+        padding: 30px 20px;
+    }
+
+}
+
+
+/* ============================================================================
+   REDUCED MOTION
+============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .verification-spinner {
+        animation: none;
+    }
+
+    .verification-info,
+    .verification-explorer a,
+    .verification-retry {
+        transition: none;
+    }
+
+}

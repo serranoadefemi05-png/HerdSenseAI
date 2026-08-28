@@ -120,7 +120,9 @@ if configured_cors_origins:
         )
 
         if origin and origin not in allowed_origins:
-            allowed_origins.append(origin)
+            allowed_origins.append(
+                origin
+            )
 
 
 # =============================================================================
@@ -152,7 +154,9 @@ def initialize_database() -> None:
     It does not delete existing tables or existing records.
     """
 
-    print("HerdSense AI: initializing database...")
+    print(
+        "HerdSense AI: initializing database..."
+    )
 
     try:
 
@@ -292,9 +296,10 @@ app.include_router(
     base_router
 )
 
-# -----------------------------------------------------------------------------
+
+# =============================================================================
 # ADMIN CONTROL ROOM
-# -----------------------------------------------------------------------------
+# =============================================================================
 
 app.include_router(
     admin_router
