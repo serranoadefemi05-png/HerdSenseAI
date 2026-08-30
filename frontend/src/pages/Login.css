@@ -26,14 +26,8 @@
     --login-radius: 22px;
 }
 
-
-/* ==========================================================================
-   LIGHT MODE
-   ========================================================================== */
-
 :root[data-theme="light"] {
     --login-bg: #f5f6f7;
-
     --login-surface: #ffffff;
     --login-surface-secondary: #fafafa;
     --login-surface-hover: #f4f4f4;
@@ -50,7 +44,6 @@
     --login-grid: rgba(0, 0, 0, 0.035);
 }
 
-
 /* ==========================================================================
    PAGE
    ========================================================================== */
@@ -59,7 +52,6 @@
     position: relative;
     min-height: 100vh;
     width: 100%;
-
     overflow-x: hidden;
 
     background: var(--login-bg);
@@ -77,15 +69,13 @@
         color 0.3s ease;
 }
 
-
 /* ==========================================================================
-   TECHNICAL GRID
+   GRID
    ========================================================================== */
 
 .login-grid {
     position: absolute;
     inset: 0;
-
     pointer-events: none;
 
     background-image:
@@ -119,42 +109,33 @@
         );
 }
 
-
 /* ==========================================================================
-   ATMOSPHERIC GLOW
+   GLOW
    ========================================================================== */
 
 .login-glow {
     position: absolute;
-
     width: 620px;
     height: 620px;
-
     border-radius: 50%;
 
     pointer-events: none;
-
     filter: blur(120px);
-
     opacity: 0.08;
 }
 
 .login-glow-one {
     top: -400px;
     right: -220px;
-
     background: #ffffff;
 }
 
 .login-glow-two {
     bottom: -450px;
     left: -280px;
-
     background: #3b82f6;
-
     opacity: 0.035;
 }
-
 
 /* ==========================================================================
    HEADER
@@ -172,12 +153,13 @@
 
     padding: 0 40px;
 
-    border-bottom: 1px solid var(--login-border);
+    border-bottom:
+        1px solid
+        var(--login-border);
 }
 
-
 /* ==========================================================================
-   THEME BUTTON
+   THEME
    ========================================================================== */
 
 .theme-toggle {
@@ -188,15 +170,15 @@
     justify-content: center;
 
     gap: 7px;
-
     padding: 0 13px;
 
-    border: 1px solid var(--login-border);
+    border:
+        1px solid
+        var(--login-border);
 
     border-radius: 9px;
 
     background: var(--login-surface);
-
     color: var(--login-text);
 
     font-size: 11px;
@@ -211,9 +193,11 @@
 }
 
 .theme-toggle:hover {
-    border-color: var(--login-border-strong);
+    border-color:
+        var(--login-border-strong);
 
-    background: var(--login-surface-hover);
+    background:
+        var(--login-surface-hover);
 }
 
 .theme-toggle:active {
@@ -224,7 +208,6 @@
     font-size: 14px;
 }
 
-
 /* ==========================================================================
    MAIN
    ========================================================================== */
@@ -233,12 +216,14 @@
     position: relative;
     z-index: 5;
 
-    width: min(
-        1120px,
-        calc(100% - 80px)
-    );
+    width:
+        min(
+            1120px,
+            calc(100% - 80px)
+        );
 
-    min-height: calc(100vh - 140px);
+    min-height:
+        calc(100vh - 140px);
 
     margin: 0 auto;
 
@@ -255,7 +240,6 @@
     padding: 70px 0;
 }
 
-
 /* ==========================================================================
    HERO
    ========================================================================== */
@@ -269,13 +253,11 @@
     align-items: center;
 
     gap: 8px;
-
     margin-bottom: 28px;
 
     color: var(--login-text-muted);
 
     font-size: 9px;
-
     font-weight: 600;
 
     letter-spacing: 0.16em;
@@ -289,13 +271,15 @@
 
     border-radius: 50%;
 
-    background: var(--login-green);
+    background:
+        var(--login-green);
 
     box-shadow:
-        0 0 0 4px rgba(40, 214, 92, 0.08),
-        0 0 14px rgba(40, 214, 92, 0.45);
+        0 0 0 4px
+        rgba(40, 214, 92, 0.08),
+        0 0 14px
+        rgba(40, 214, 92, 0.45);
 }
-
 
 /* ==========================================================================
    HERO TITLE
@@ -306,19 +290,17 @@
 
     color: var(--login-text);
 
-    font-size: clamp(
-        52px,
-        5vw,
-        76px
-    );
+    font-size:
+        clamp(
+            52px,
+            5vw,
+            76px
+        );
 
     line-height: 0.95;
-
     letter-spacing: -0.065em;
-
     font-weight: 700;
 }
-
 
 /* ==========================================================================
    HERO DESCRIPTION
@@ -329,15 +311,14 @@
 
     margin: 30px 0 0;
 
-    color: var(--login-text-secondary);
+    color:
+        var(--login-text-secondary);
 
     font-size: 15px;
-
     line-height: 1.65;
 
     letter-spacing: -0.01em;
 }
-
 
 /* ==========================================================================
    FEATURES
@@ -370,18 +351,16 @@
 .feature-number {
     padding-top: 2px;
 
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 9px;
-
     letter-spacing: 0.08em;
 }
 
 .feature-item div {
     display: flex;
-
     flex-direction: column;
-
     gap: 4px;
 }
 
@@ -389,16 +368,15 @@
     color: var(--login-text);
 
     font-size: 12px;
-
     font-weight: 600;
 }
 
 .feature-item span {
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 10px;
 }
-
 
 /* ==========================================================================
    AUTH CARD
@@ -406,7 +384,6 @@
 
 .login-card {
     width: 100%;
-
     min-height: 600px;
 
     border:
@@ -424,7 +401,8 @@
         );
 
     box-shadow:
-        0 35px 100px rgba(0, 0, 0, 0.35);
+        0 35px 100px
+        rgba(0, 0, 0, 0.35);
 
     backdrop-filter:
         blur(20px);
@@ -440,9 +418,9 @@
         rgba(255, 255, 255, 0.94);
 
     box-shadow:
-        0 30px 80px rgba(0, 0, 0, 0.08);
+        0 30px 80px
+        rgba(0, 0, 0, 0.08);
 }
-
 
 /* ==========================================================================
    CARD INNER
@@ -453,51 +431,50 @@
         42px 46px 40px;
 }
 
-
 /* ==========================================================================
-   PREMIUM LOGO AREA
+   LOGO
    ========================================================================== */
 
 .login-card-logo {
     width: 100%;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
-    padding:
-        8px 0 34px;
-
+    padding: 0 0 30px;
     margin-bottom: 8px;
 }
 
-.login-card-logo img {
+.herdsense-logo-image {
     display: block;
 
     width: 150px;
     height: 150px;
+
+    max-width: 100%;
 
     object-fit: contain;
 
     border-radius: 18px;
 
     box-shadow:
-        0 20px 55px rgba(0, 0, 0, 0.28);
+        0 20px 55px
+        rgba(0, 0, 0, 0.28);
 
     transition:
         transform 0.3s ease,
         box-shadow 0.3s ease;
 }
 
-.login-card-logo img:hover {
-    transform: translateY(-2px);
+.herdsense-logo-image:hover {
+    transform:
+        translateY(-2px);
 
     box-shadow:
-        0 25px 65px rgba(0, 0, 0, 0.34);
+        0 25px 65px
+        rgba(0, 0, 0, 0.34);
 }
-
 
 /* ==========================================================================
    AUTH HEADING
@@ -506,10 +483,10 @@
 .login-eyebrow {
     margin-bottom: 11px;
 
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 9px;
-
     font-weight: 600;
 
     letter-spacing: 0.18em;
@@ -518,14 +495,13 @@
 .login-card h2 {
     margin: 0;
 
-    color: var(--login-text);
+    color:
+        var(--login-text);
 
     font-size: 29px;
-
     line-height: 1.1;
 
     letter-spacing: -0.045em;
-
     font-weight: 700;
 }
 
@@ -533,13 +509,12 @@
     margin:
         8px 0 30px;
 
-    color: var(--login-text-secondary);
+    color:
+        var(--login-text-secondary);
 
     font-size: 11px;
-
     line-height: 1.55;
 }
-
 
 /* ==========================================================================
    FORM
@@ -554,13 +529,12 @@
 
     margin-bottom: 8px;
 
-    color: var(--login-text-secondary);
+    color:
+        var(--login-text-secondary);
 
     font-size: 10px;
-
     font-weight: 600;
 }
-
 
 /* ==========================================================================
    PASSWORD LABEL
@@ -570,7 +544,6 @@
     display: flex;
 
     align-items: center;
-
     justify-content: space-between;
 
     gap: 12px;
@@ -580,9 +553,8 @@
     margin-bottom: 8px;
 }
 
-
 /* ==========================================================================
-   FORGOT PASSWORD
+   FORGOT
    ========================================================================== */
 
 .forgot-link {
@@ -595,10 +567,10 @@
 
     background: transparent;
 
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 9px;
-
     font-weight: 600;
 
     cursor: pointer;
@@ -608,9 +580,9 @@
 }
 
 .forgot-link:hover {
-    color: var(--login-text);
+    color:
+        var(--login-text);
 }
-
 
 /* ==========================================================================
    INPUT
@@ -622,7 +594,6 @@
     height: 48px;
 
     display: flex;
-
     align-items: center;
 
     border:
@@ -653,7 +624,8 @@
         rgba(255, 255, 255, 0.035);
 }
 
-:root[data-theme="light"] .input-shell:focus-within {
+:root[data-theme="light"]
+.input-shell:focus-within {
     border-color:
         rgba(0, 0, 0, 0.32);
 
@@ -666,12 +638,11 @@
     width: 42px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 11px;
 }
@@ -679,28 +650,28 @@
 .input-shell input {
     flex: 1;
 
+    width: 100%;
     height: 100%;
-
     min-width: 0;
 
     padding:
         0 12px 0 0;
 
     border: 0;
-
     outline: none;
 
     background: transparent;
 
-    color: var(--login-text);
+    color:
+        var(--login-text);
 
     font-size: 12px;
 }
 
 .input-shell input::placeholder {
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 }
-
 
 /* ==========================================================================
    SHOW PASSWORD
@@ -715,7 +686,8 @@
 
     background: transparent;
 
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 9px;
 
@@ -723,9 +695,9 @@
 }
 
 .show-password:hover {
-    color: var(--login-text);
+    color:
+        var(--login-text);
 }
-
 
 /* ==========================================================================
    ERROR
@@ -733,15 +705,12 @@
 
 .login-error {
     display: flex;
-
     align-items: flex-start;
 
     gap: 9px;
 
     margin-bottom: 16px;
-
-    padding:
-        11px 12px;
+    padding: 11px 12px;
 
     border:
         1px solid
@@ -752,7 +721,8 @@
     background:
         rgba(255, 92, 92, 0.07);
 
-    color: var(--login-red);
+    color:
+        var(--login-red);
 
     font-size: 10px;
 }
@@ -764,9 +734,7 @@
     flex: 0 0 16px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     border-radius: 50%;
@@ -783,22 +751,18 @@
     line-height: 1.4;
 }
 
-
 /* ==========================================================================
    SUCCESS
    ========================================================================== */
 
 .login-success {
     display: flex;
-
     align-items: flex-start;
 
     gap: 9px;
 
     margin-bottom: 16px;
-
-    padding:
-        11px 12px;
+    padding: 11px 12px;
 
     border:
         1px solid
@@ -809,7 +773,8 @@
     background:
         rgba(40, 214, 92, 0.07);
 
-    color: var(--login-green);
+    color:
+        var(--login-green);
 
     font-size: 10px;
 }
@@ -821,9 +786,7 @@
     flex: 0 0 16px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     border-radius: 50%;
@@ -832,7 +795,6 @@
         rgba(40, 214, 92, 0.15);
 
     font-size: 9px;
-
     font-weight: 700;
 }
 
@@ -842,26 +804,23 @@
     line-height: 1.4;
 }
 
-
 /* ==========================================================================
-   VERIFICATION RESEND
+   VERIFICATION
    ========================================================================== */
 
 .verification-resend {
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     gap: 5px;
 
     margin-top: 15px;
 
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 9px;
-
     line-height: 1.4;
 
     text-align: center;
@@ -873,10 +832,8 @@
 
 .verification-resend button:disabled {
     cursor: not-allowed;
-
     opacity: 0.5;
 }
-
 
 /* ==========================================================================
    AUTH STATUS
@@ -894,9 +851,7 @@
         0 auto 20px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     border:
@@ -908,33 +863,30 @@
     background:
         rgba(40, 214, 92, 0.08);
 
-    color: var(--login-green);
+    color:
+        var(--login-green);
 
     font-size: 22px;
-
     font-weight: 700;
 }
 
-
 /* ==========================================================================
-   AUTH MODE SWITCH
+   AUTH SWITCH
    ========================================================================== */
 
 .auth-switch {
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     gap: 5px;
 
     margin-top: 19px;
 
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 9px;
-
     line-height: 1.4;
 
     text-align: center;
@@ -947,10 +899,10 @@
 
     background: transparent;
 
-    color: var(--login-text);
+    color:
+        var(--login-text);
 
     font-size: 9px;
-
     font-weight: 700;
 
     cursor: pointer;
@@ -966,10 +918,8 @@
 
 .auth-switch-button:disabled {
     cursor: not-allowed;
-
     opacity: 0.5;
 }
-
 
 /* ==========================================================================
    PRIMARY BUTTON
@@ -977,27 +927,24 @@
 
 .login-submit {
     width: 100%;
-
     height: 49px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     gap: 12px;
 
     border: 0;
-
     border-radius: 10px;
 
-    background: var(--login-white);
+    background:
+        var(--login-white);
 
-    color: var(--login-bg);
+    color:
+        var(--login-bg);
 
     font-size: 12px;
-
     font-weight: 700;
 
     cursor: pointer;
@@ -1024,33 +971,29 @@
 
 .login-submit:disabled {
     cursor: not-allowed;
-
     opacity: 0.55;
 }
 
 .submit-arrow {
     font-size: 17px;
-
     font-weight: 400;
 }
 
-
 /* ==========================================================================
-   SECURITY NOTE
+   SECURITY
    ========================================================================== */
 
 .secure-note {
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     gap: 7px;
 
     margin-top: 25px;
 
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 9px;
 }
@@ -1060,9 +1003,7 @@
     height: 14px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: center;
 
     border-radius: 50%;
@@ -1070,11 +1011,11 @@
     background:
         rgba(40, 214, 92, 0.12);
 
-    color: var(--login-green);
+    color:
+        var(--login-green);
 
     font-size: 9px;
 }
-
 
 /* ==========================================================================
    FOOTER
@@ -1082,13 +1023,11 @@
 
 .login-footer {
     position: relative;
-
     z-index: 10;
 
     min-height: 64px;
 
-    padding:
-        0 40px;
+    padding: 0 40px;
 
     display: grid;
 
@@ -1101,7 +1040,8 @@
         1px solid
         var(--login-border);
 
-    color: var(--login-text-muted);
+    color:
+        var(--login-text-muted);
 
     font-size: 8px;
 }
@@ -1114,9 +1054,8 @@
     text-align: right;
 }
 
-
 /* ==========================================================================
-   RESPONSIVE — TABLET
+   TABLET
    ========================================================================== */
 
 @media (max-width: 1050px) {
@@ -1127,13 +1066,11 @@
                 calc(100% - 50px)
             );
 
-        grid-template-columns:
-            1fr;
+        grid-template-columns: 1fr;
 
         gap: 55px;
 
-        padding:
-            60px 0;
+        padding: 60px 0;
     }
 
     .login-hero {
@@ -1142,32 +1079,27 @@
 
     .login-card {
         width: 100%;
-
         max-width: 520px;
 
         justify-self: center;
     }
 }
 
-
 /* ==========================================================================
-   RESPONSIVE — MOBILE
+   MOBILE
    ========================================================================== */
 
 @media (max-width: 650px) {
     .login-header {
         height: 68px;
-
-        padding:
-            0 20px;
+        padding: 0 20px;
     }
 
     .login-main {
         width:
             calc(100% - 32px);
 
-        padding:
-            42px 0;
+        padding: 42px 0;
     }
 
     .login-hero h1 {
@@ -1180,7 +1112,6 @@
 
     .login-card {
         max-width: none;
-
         min-height: 0;
 
         border-radius: 18px;
@@ -1196,7 +1127,7 @@
             4px 0 28px;
     }
 
-    .login-card-logo img {
+    .herdsense-logo-image {
         width: 125px;
         height: 125px;
     }
@@ -1215,15 +1146,13 @@
 
     .verification-resend {
         flex-direction: column;
-
         gap: 4px;
     }
 
     .login-footer {
         min-height: 60px;
 
-        padding:
-            0 20px;
+        padding: 0 20px;
 
         grid-template-columns:
             1fr 1fr;
@@ -1238,9 +1167,8 @@
     }
 }
 
-
 /* ==========================================================================
-   VERY SMALL SCREENS
+   VERY SMALL
    ========================================================================== */
 
 @media (max-width: 400px) {
@@ -1248,8 +1176,7 @@
         width:
             calc(100% - 24px);
 
-        padding:
-            32px 0;
+        padding: 32px 0;
     }
 
     .login-card-inner {
@@ -1262,13 +1189,11 @@
     }
 
     .theme-toggle {
-        padding:
-            0 10px;
+        padding: 0 10px;
     }
 
     .auth-switch {
         flex-direction: column;
-
         gap: 3px;
     }
 
@@ -1276,15 +1201,14 @@
         align-items: flex-start;
     }
 
-    .login-card-logo img {
+    .herdsense-logo-image {
         width: 110px;
         height: 110px;
     }
 }
 
-
 /* ==========================================================================
-   ACCESSIBILITY — REDUCED MOTION
+   ACCESSIBILITY
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1292,15 +1216,9 @@
     *::before,
     *::after {
         transition: none !important;
-
         animation: none !important;
     }
 }
-
-
-/* ==========================================================================
-   ACCESSIBILITY — HIGH CONTRAST
-   ========================================================================== */
 
 @media (prefers-contrast: more) {
     .input-shell,

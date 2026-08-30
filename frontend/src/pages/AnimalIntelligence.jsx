@@ -35,7 +35,6 @@ import "./AnimalIntelligence.css";
    - Handle authentication failures
    - Preserve existing API architecture
 
-   Important:
    Disease prediction is NOT presented from this page.
    The intelligence endpoint is the rule-based physiological intelligence layer.
 ========================================================================== */
@@ -112,6 +111,7 @@ function getAnimalName(animal, intelligence) {
         animal?.animal_name ??
         animal?.animalName ??
         intelligence?.animal_name ??
+        intelligence?.animalName ??
         `Animal #${getAnimalId(animal) ?? "—"}`
     );
 }
@@ -328,20 +328,24 @@ function formatCoordinate(value) {
 
 function normalizeStatus(value) {
     const status = String(
-        value || "Healthy"
-    ).toLowerCase();
+        value || "healthy"
+    )
+        .trim()
+        .toLowerCase();
 
     if (
         status === "critical" ||
         status === "danger" ||
-        status === "dangerous"
+        status === "dangerous" ||
+        status === "severe"
     ) {
         return "critical";
     }
 
     if (
         status === "warning" ||
-        status === "caution"
+        status === "caution" ||
+        status === "moderate"
     ) {
         return "warning";
     }
@@ -368,17 +372,30 @@ function displayStatus(value) {
 function trendLabel(value) {
     const trend = String(
         value || ""
-    ).toLowerCase();
+    )
+        .trim()
+        .toLowerCase();
 
-    if (trend === "increasing") {
+    if (
+        trend === "increasing" ||
+        trend === "increase" ||
+        trend === "up"
+    ) {
         return "Increasing";
     }
 
-    if (trend === "decreasing") {
+    if (
+        trend === "decreasing" ||
+        trend === "decrease" ||
+        trend === "down"
+    ) {
         return "Decreasing";
     }
 
-    if (trend === "stable") {
+    if (
+        trend === "stable" ||
+        trend === "steady"
+    ) {
         return "Stable";
     }
 
@@ -390,7 +407,10 @@ function metricClass(
     metric,
     value
 ) {
-    if (value === null || value === undefined) {
+    if (
+        value === null ||
+        value === undefined
+    ) {
         return "normal";
     }
 
@@ -434,6 +454,32 @@ function metricClass(
 }
 
 
+function batteryClass(value) {
+    if (
+        value === null ||
+        value === undefined
+    ) {
+        return "normal";
+    }
+
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return "normal";
+    }
+
+    if (number <= 20) {
+        return "critical";
+    }
+
+    if (number <= 35) {
+        return "warning";
+    }
+
+    return "normal";
+}
+
+
 function telemetryAnimalId(record) {
     return (
         record?.animal_id ??
@@ -454,12 +500,60 @@ function sortNewestFirst(records) {
 
 
 function extractErrorMessage(error) {
+    const detail =
+        error?.response?.data?.detail;
+
+    if (Array.isArray(detail)) {
+        return detail
+            .map(
+                (item) =>
+                    item?.msg ||
+                    item?.message ||
+                    String(item)
+            )
+            .join(", ");
+    }
+
     return (
-        error?.response?.data?.detail ??
+        detail ??
         error?.response?.data?.message ??
+        error?.response?.data?.error ??
         error?.message ??
         "Unable to load animal intelligence."
     );
+}
+
+
+function formatFindingSignal(value) {
+    if (!value) {
+        return "Signal finding";
+    }
+
+    return String(value)
+        .replaceAll("_", " ")
+        .replaceAll("-", " ")
+        .replace(
+            /^\w/,
+            (letter) =>
+                letter.toUpperCase()
+        );
+}
+
+
+function getDataStatusLabel(status) {
+    const normalized =
+        String(status || "")
+            .toLowerCase();
+
+    if (normalized === "sufficient") {
+        return "Good";
+    }
+
+    if (normalized === "limited") {
+        return "Limited";
+    }
+
+    return "Insufficient";
 }
 
 
@@ -521,9 +615,12 @@ export default function AnimalIntelligence() {
                 "user_role"
             );
 
-            navigate("/login", {
-                replace: true,
-            });
+            navigate(
+                "/login",
+                {
+                    replace: true,
+                }
+            );
         }, [navigate]);
 
 
@@ -561,54 +658,52 @@ export default function AnimalIntelligence() {
 
                 try {
                     /*
-                     * Individual animal record.
+                     * Load the three primary resources independently
+                     * enough to prevent one malformed response from
+                     * destroying the entire page.
                      */
-                    const animalResult =
-                        await api.get(
+
+                    const [
+                        animalResult,
+                        intelligenceResult,
+                        telemetryResult,
+                    ] = await Promise.all([
+                        api.get(
                             `/animals/${id}`,
                             config
-                        );
+                        ),
 
-
-                    /*
-                     * Intelligence endpoint.
-                     *
-                     * Backend contract:
-                     * /api/v1/intelligence/animal/{animal_id}
-                     */
-                    const intelligenceResult =
-                        await api.get(
+                        api.get(
                             `/intelligence/animal/${id}`,
                             config
-                        );
+                        ),
 
-
-                    /*
-                     * Telemetry history.
-                     */
-                    const telemetryResult =
-                        await api.get(
+                        api.get(
                             `/telemetry/animal/${id}`,
                             config
+                        ),
+                    ]);
+
+
+                    const telemetryRecords =
+                        normalizeArray(
+                            telemetryResult?.data
                         );
 
 
                     setAnimal(
-                        animalResult.data
+                        animalResult?.data ?? null
                     );
 
                     setIntelligence(
-                        intelligenceResult.data
+                        intelligenceResult?.data ?? null
                     );
 
                     setTelemetry(
                         sortNewestFirst(
-                            normalizeArray(
-                                telemetryResult.data
-                            )
+                            telemetryRecords
                         )
                     );
-
 
                     setApiOnline(true);
 
@@ -655,8 +750,8 @@ export default function AnimalIntelligence() {
     /* ======================================================================
        LOAD BASE RECORD
 
-       This is intentionally independent from intelligence.
-       If Base is unavailable, the intelligence page still works.
+       Base integration is supplemental.
+       Animal intelligence must continue working if Base is unavailable.
     ====================================================================== */
 
     const fetchBaseRecord =
@@ -665,7 +760,7 @@ export default function AnimalIntelligence() {
                 const token =
                     getToken();
 
-                if (!token) {
+                if (!token || !id) {
                     return;
                 }
 
@@ -682,21 +777,16 @@ export default function AnimalIntelligence() {
                         );
 
                     setBaseRecord(
-                        response.data
+                        response?.data ?? null
                     );
 
                 } catch (err) {
-                    /*
-                     * Base integration is supplemental.
-                     * Do not make animal intelligence fail
-                     * because blockchain preparation is unavailable.
-                     */
-
                     if (
                         err?.response?.status ===
                         401
                     ) {
                         handleAuthFailure();
+                        return;
                     }
 
                     console.warn(
@@ -715,27 +805,51 @@ export default function AnimalIntelligence() {
 
 
     /* ======================================================================
-       INITIAL LOAD
+       INITIAL LOAD + AUTO REFRESH
     ====================================================================== */
 
     useEffect(() => {
         if (!id) {
             setLoading(false);
+
             setError(
                 "No animal identifier was provided."
             );
-            return;
+
+            return undefined;
         }
 
-        fetchIntelligence(false);
-        fetchBaseRecord();
+        let mounted = true;
+
+        const load = async () => {
+            if (!mounted) {
+                return;
+            }
+
+            await fetchIntelligence(false);
+
+            if (mounted) {
+                await fetchBaseRecord();
+            }
+        };
+
+        load();
 
         const interval =
-            setInterval(() => {
-                fetchIntelligence(true);
-            }, REFRESH_INTERVAL);
+            setInterval(
+                () => {
+                    if (!mounted) {
+                        return;
+                    }
+
+                    fetchIntelligence(true);
+                    fetchBaseRecord();
+                },
+                REFRESH_INTERVAL
+            );
 
         return () => {
+            mounted = false;
             clearInterval(interval);
         };
     }, [
@@ -746,17 +860,22 @@ export default function AnimalIntelligence() {
 
 
     /* ======================================================================
-       REFRESH
+       MANUAL REFRESH
     ====================================================================== */
 
     const handleRefresh =
-        useCallback(() => {
-            fetchIntelligence(true);
-            fetchBaseRecord();
-        }, [
-            fetchIntelligence,
-            fetchBaseRecord,
-        ]);
+        useCallback(
+            async () => {
+                await Promise.all([
+                    fetchIntelligence(true),
+                    fetchBaseRecord(),
+                ]);
+            },
+            [
+                fetchIntelligence,
+                fetchBaseRecord,
+            ]
+        );
 
 
     /* ======================================================================
@@ -764,56 +883,66 @@ export default function AnimalIntelligence() {
     ====================================================================== */
 
     const current =
-        intelligence?.current || {};
+        intelligence?.current ??
+        intelligence?.current_telemetry ??
+        intelligence?.latest ??
+        {};
+
 
     const healthScore =
         getNumber(
-            intelligence?.health_score
+            intelligence?.health_score,
+            intelligence?.healthScore
         );
+
 
     const riskScore =
         getNumber(
-            intelligence?.risk_score
+            intelligence?.risk_score,
+            intelligence?.riskScore
         );
 
+
     const healthStatus =
-        intelligence?.health_status ||
-        animal?.health_status ||
+        intelligence?.health_status ??
+        intelligence?.healthStatus ??
+        animal?.health_status ??
+        animal?.healthStatus ??
         "Healthy";
+
 
     const statusClass =
         normalizeStatus(
             healthStatus
         );
 
+
     const currentTemperature =
-        getNumber(
-            current.temperature
-        );
+        getTemperature(current);
+
 
     const currentHeartRate =
-        getNumber(
-            current.heart_rate
-        );
+        getHeartRate(current);
+
 
     const currentActivity =
-        getNumber(
-            current.activity
-        );
+        getActivity(current);
+
 
     const currentBattery =
-        getNumber(
-            current.battery
-        );
+        getBattery(current);
+
 
     const currentLatitude =
         getLatitude(current);
 
+
     const currentLongitude =
         getLongitude(current);
 
+
     const currentTimestamp =
-        current.timestamp;
+        getTimestamp(current);
 
 
     const recentTelemetry =
@@ -825,22 +954,21 @@ export default function AnimalIntelligence() {
 
 
     const latestTelemetry =
-        recentTelemetry[0] || null;
+        recentTelemetry[0] ||
+        null;
 
 
     /*
-     * Intelligence current telemetry is the
-     * authoritative current reading.
-     *
-     * The fallback to latestTelemetry protects
-     * against a temporarily incomplete intelligence
-     * response.
+     * Intelligence current telemetry is authoritative.
+     * Telemetry history is the fallback.
      */
+
     const effectiveTemperature =
         currentTemperature ??
         getTemperature(
             latestTelemetry
         );
+
 
     const effectiveHeartRate =
         currentHeartRate ??
@@ -848,11 +976,13 @@ export default function AnimalIntelligence() {
             latestTelemetry
         );
 
+
     const effectiveActivity =
         currentActivity ??
         getActivity(
             latestTelemetry
         );
+
 
     const effectiveBattery =
         currentBattery ??
@@ -860,17 +990,20 @@ export default function AnimalIntelligence() {
             latestTelemetry
         );
 
+
     const effectiveLatitude =
         currentLatitude ??
         getLatitude(
             latestTelemetry
         );
 
+
     const effectiveLongitude =
         currentLongitude ??
         getLongitude(
             latestTelemetry
         );
+
 
     const effectiveTimestamp =
         currentTimestamp ??
@@ -885,21 +1018,27 @@ export default function AnimalIntelligence() {
             intelligence
         );
 
+
     const species =
         getSpecies(animal);
+
 
     const breed =
         getBreed(animal);
 
+
     const tagId =
         getTagId(animal);
+
 
     const sex =
         getSex(animal);
 
 
     const trends =
-        intelligence?.trend || {};
+        intelligence?.trend ??
+        intelligence?.trends ??
+        {};
 
 
     const riskFactors =
@@ -907,23 +1046,32 @@ export default function AnimalIntelligence() {
             intelligence?.risk_factors
         )
             ? intelligence.risk_factors
-            : [];
+            : Array.isArray(
+                intelligence?.riskFactors
+            )
+                ? intelligence.riskFactors
+                : [];
 
 
     const recommendation =
-        intelligence?.recommendation ||
+        intelligence?.recommendation ??
+        intelligence?.recommended_action ??
+        intelligence?.recommendedAction ??
         "Continue monitoring the animal's current physiological signals.";
 
 
     const dataStatus =
-        intelligence?.data_status ||
+        intelligence?.data_status ??
+        intelligence?.dataStatus ??
         "insufficient_data";
 
 
     const telemetryCount =
         getNumber(
-            intelligence?.telemetry_count
-        ) ?? recentTelemetry.length;
+            intelligence?.telemetry_count,
+            intelligence?.telemetryCount
+        ) ??
+        telemetry.length;
 
 
     const healthDescription =
@@ -945,23 +1093,62 @@ export default function AnimalIntelligence() {
     const baseNetwork =
         baseRecord?.network ??
         baseRecord?.blockchain ??
+        baseRecord?.chain ??
         null;
 
 
     const baseHash =
         baseRecord?.data_hash ??
+        baseRecord?.dataHash ??
+        baseRecord?.record_hash ??
+        baseRecord?.recordHash ??
         null;
+
+
+    const baseTransaction =
+        baseRecord?.transaction_hash ??
+        baseRecord?.transactionHash ??
+        baseRecord?.tx_hash ??
+        baseRecord?.txHash ??
+        null;
+
+
+    const baseVerified =
+        Boolean(
+            baseRecord?.verified ??
+            baseRecord?.is_verified ??
+            baseRecord?.isVerified ??
+            false
+        );
+
+
+    const batteryPercentage =
+        effectiveBattery === null
+            ? 0
+            : Math.max(
+                0,
+                Math.min(
+                    100,
+                    effectiveBattery
+                )
+            );
 
 
     /* ======================================================================
        LOADING
     ====================================================================== */
 
-    if (loading && !animal && !intelligence) {
+    if (
+        loading &&
+        !animal &&
+        !intelligence
+    ) {
         return (
             <AppShell>
                 <main className="intelligence-page">
+
                     <div className="intelligence-loading">
+
                         <div className="intelligence-loading-mark">
                             AI
                         </div>
@@ -973,7 +1160,9 @@ export default function AnimalIntelligence() {
                         <span>
                             Synchronizing animal profile, telemetry and health signals.
                         </span>
+
                     </div>
+
                 </main>
             </AppShell>
         );
@@ -990,7 +1179,9 @@ export default function AnimalIntelligence() {
     ) {
         return (
             <AppShell>
+
                 <main className="intelligence-page">
+
                     <section className="intelligence-empty">
 
                         <div className="intelligence-empty-mark">
@@ -1022,7 +1213,9 @@ export default function AnimalIntelligence() {
                         </button>
 
                     </section>
+
                 </main>
+
             </AppShell>
         );
     }
@@ -1123,6 +1316,18 @@ export default function AnimalIntelligence() {
                         <span>
                             {error}
                         </span>
+
+                        <button
+                            type="button"
+                            onClick={
+                                handleRefresh
+                            }
+                            disabled={
+                                refreshing
+                            }
+                        >
+                            Retry
+                        </button>
 
                     </div>
                 )}
@@ -1377,12 +1582,9 @@ export default function AnimalIntelligence() {
                             </span>
 
                             <strong
-                                className={
-                                    effectiveBattery !== null &&
-                                    effectiveBattery < 20
-                                        ? "warning"
-                                        : "normal"
-                                }
+                                className={batteryClass(
+                                    effectiveBattery
+                                )}
                             >
                                 {effectiveBattery !== null
                                     ? Math.round(
@@ -1400,18 +1602,13 @@ export default function AnimalIntelligence() {
                                 <div
                                     className={`intelligence-battery-fill ${
                                         effectiveBattery !== null &&
-                                        effectiveBattery < 20
+                                        effectiveBattery <= 20
                                             ? "low"
                                             : ""
                                     }`}
                                     style={{
-                                        width: `${Math.max(
-                                            0,
-                                            Math.min(
-                                                100,
-                                                effectiveBattery ?? 0
-                                            )
-                                        )}%`,
+                                        width:
+                                            `${batteryPercentage}%`,
                                     }}
                                 />
 
@@ -1465,17 +1662,23 @@ export default function AnimalIntelligence() {
 
                             {riskFactors.length > 0 ? (
                                 riskFactors.map(
-                                    (factor, index) => {
+                                    (
+                                        factor,
+                                        index
+                                    ) => {
 
                                         const severity =
                                             normalizeStatus(
-                                                factor?.severity
+                                                factor?.severity ??
+                                                factor?.status
                                             );
 
                                         return (
                                             <div
                                                 className={`intelligence-finding ${severity}`}
-                                                key={`${factor?.signal || "finding"}-${index}`}
+                                                key={
+                                                    `${factor?.signal || "finding"}-${index}`
+                                                }
                                             >
 
                                                 <div className="intelligence-finding-icon">
@@ -1489,24 +1692,16 @@ export default function AnimalIntelligence() {
                                                 <div>
 
                                                     <strong>
-                                                        {factor?.signal
-                                                            ? String(
-                                                                factor.signal
-                                                            )
-                                                                .replaceAll(
-                                                                    "_",
-                                                                    " "
-                                                                )
-                                                                .replace(
-                                                                    /^\w/,
-                                                                    (letter) =>
-                                                                        letter.toUpperCase()
-                                                                )
-                                                            : "Signal finding"}
+                                                        {formatFindingSignal(
+                                                            factor?.signal ??
+                                                            factor?.type ??
+                                                            factor?.name
+                                                        )}
                                                     </strong>
 
                                                     <span>
-                                                        {factor?.message ||
+                                                        {factor?.message ??
+                                                            factor?.description ??
                                                             "A telemetry deviation has been detected."}
                                                     </span>
 
@@ -1753,7 +1948,7 @@ export default function AnimalIntelligence() {
                                                     <tr
                                                         key={
                                                             record?.id ??
-                                                            `${timestampMs(record)}-${index}`
+                                                            `${telemetryAnimalId(record) ?? id}-${timestampMs(record)}-${index}`
                                                         }
                                                     >
 
@@ -1806,7 +2001,11 @@ export default function AnimalIntelligence() {
                                                         </td>
 
 
-                                                        <td>
+                                                        <td
+                                                            className={batteryClass(
+                                                                battery
+                                                            )}
+                                                        >
                                                             {battery !== null
                                                                 ? `${Math.round(
                                                                     battery
@@ -1952,6 +2151,7 @@ export default function AnimalIntelligence() {
                                 <span className="metric-unit">
                                     /100
                                 </span>
+
                             </strong>
 
                             <small>
@@ -1972,11 +2172,9 @@ export default function AnimalIntelligence() {
                             </span>
 
                             <strong className="normal">
-                                {dataStatus === "sufficient"
-                                    ? "Good"
-                                    : dataStatus === "limited"
-                                        ? "Limited"
-                                        : "Insufficient"}
+                                {getDataStatusLabel(
+                                    dataStatus
+                                )}
                             </strong>
 
                             <small>
@@ -2181,13 +2379,43 @@ export default function AnimalIntelligence() {
 
                             </div>
 
+
+                            <div>
+
+                                <span>
+                                    VERIFICATION
+                                </span>
+
+                                <strong>
+                                    {baseVerified
+                                        ? "Verified"
+                                        : baseRecord
+                                            ? "Unverified"
+                                            : "Pending"}
+                                </strong>
+
+                            </div>
+
                         </div>
 
 
                         <div className="intelligence-location-footer">
 
                             {baseHash
-                                ? `Blockchain data fingerprint: ${baseHash}`
+                                ? (
+                                    <>
+                                        Blockchain data fingerprint:{" "}
+                                        {baseHash}
+
+                                        {baseTransaction && (
+                                            <>
+                                                {" • "}
+                                                Transaction:{" "}
+                                                {baseTransaction}
+                                            </>
+                                        )}
+                                    </>
+                                )
                                 : "This animal does not currently have a prepared Base blockchain record."}
 
                         </div>
@@ -2218,7 +2446,9 @@ export default function AnimalIntelligence() {
                         type="button"
                         className="intelligence-secondary-button"
                         onClick={() =>
-                            navigate("/manual-telemetry")
+                            navigate(
+                                "/manual-telemetry"
+                            )
                         }
                     >
                         Add manual reading

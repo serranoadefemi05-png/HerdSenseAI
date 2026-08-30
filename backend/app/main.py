@@ -39,6 +39,7 @@ from app.routers.intelligence import router as intelligence_router
 from app.routers.disease_risk import router as disease_risk_router
 from app.routers.base import router as base_router
 from app.routers.admin import router as admin_router
+from app.routers.wallet import router as wallet_router
 
 
 # =============================================================================
@@ -96,11 +97,11 @@ if configured_frontend_url:
 # ADD CORS_ORIGINS FROM ENVIRONMENT
 # =============================================================================
 #
-# Example Render environment variable:
+# Example:
 #
 # CORS_ORIGINS=https://herdsenseai-frontend.onrender.com,http://localhost:5173
 #
-# This allows us to add additional frontend domains without changing code.
+# This allows additional frontend domains without changing code.
 # =============================================================================
 
 configured_cors_origins = getattr(
@@ -134,59 +135,6 @@ allowed_origins = list(
 )
 
 
-print(
-    "🌐 HerdSense AI CORS origins:",
-    allowed_origins,
-)
-
-
-# =============================================================================
-# DATABASE INITIALIZATION
-# =============================================================================
-
-def initialize_database() -> None:
-    """
-    Initialize all SQLAlchemy tables.
-
-    Existing tables are preserved.
-
-    SQLAlchemy create_all() only creates tables that do not already exist.
-    It does not delete existing tables or existing records.
-    """
-
-    print(
-        "HerdSense AI: initializing database..."
-    )
-
-    try:
-
-        Base.metadata.create_all(
-            bind=engine
-        )
-
-        print(
-            "HerdSense AI: database initialization completed."
-        )
-
-    except Exception as exc:
-
-        print(
-            "❌ HerdSense AI database initialization failed:"
-        )
-
-        print(
-            repr(exc)
-        )
-
-        # Do not prevent the API from starting.
-        #
-        # This allows Render to expose the actual database/API error
-        # instead of completely crashing the service.
-        #
-        # If the database is unavailable, individual database requests
-        # will still fail and the logs will show the actual problem.
-
-
 # =============================================================================
 # APPLICATION LIFESPAN
 # =============================================================================
@@ -194,25 +142,22 @@ def initialize_database() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-    print(
-        "🚀 Starting HerdSense AI API..."
-    )
-
     # -------------------------------------------------------------------------
-    # Initialize database
+    # DATABASE INITIALIZATION
     # -------------------------------------------------------------------------
+    #
+    # Existing HerdSense tables are created when they do not already exist.
+    #
+    # IMPORTANT:
+    # create_all() does NOT modify an existing table to add new columns.
+    # The wallet column therefore still needs a database migration/update.
+    #
 
-    initialize_database()
-
-    print(
-        "🚀 HerdSense AI API startup complete."
+    Base.metadata.create_all(
+        bind=engine
     )
 
     yield
-
-    print(
-        "🛑 HerdSense AI API shutting down."
-    )
 
 
 # =============================================================================
@@ -220,16 +165,8 @@ async def lifespan(app: FastAPI):
 # =============================================================================
 
 app = FastAPI(
-
     title="HerdSense AI API",
-
-    description=(
-        "Livestock monitoring, telemetry, intelligence, "
-        "predictive analytics and Base blockchain integration API."
-    ),
-
     version="1.0.0",
-
     lifespan=lifespan,
 )
 
@@ -239,7 +176,6 @@ app = FastAPI(
 # =============================================================================
 
 app.add_middleware(
-
     CORSMiddleware,
 
     allow_origins=allowed_origins,
@@ -256,74 +192,41 @@ app.add_middleware(
 # ROUTERS
 # =============================================================================
 
-app.include_router(
-    auth_router
-)
+app.include_router(auth_router)
 
-app.include_router(
-    farm_router
-)
+app.include_router(farm_router)
 
-app.include_router(
-    animal_router
-)
+app.include_router(animal_router)
 
-app.include_router(
-    telemetry_router
-)
+app.include_router(telemetry_router)
 
-app.include_router(
-    dashboard_router
-)
+app.include_router(dashboard_router)
 
-app.include_router(
-    alert_router
-)
+app.include_router(alert_router)
 
-app.include_router(
-    websocket_router
-)
+app.include_router(websocket_router)
 
-app.include_router(
-    intelligence_router
-)
+app.include_router(intelligence_router)
 
-app.include_router(
-    disease_risk_router
-)
+app.include_router(disease_risk_router)
 
-app.include_router(
-    base_router
-)
+app.include_router(base_router)
+
+app.include_router(admin_router)
+
+app.include_router(wallet_router)
 
 
 # =============================================================================
-# ADMIN CONTROL ROOM
-# =============================================================================
-
-app.include_router(
-    admin_router
-)
-
-
-# =============================================================================
-# ROOT ENDPOINT
+# ROOT
 # =============================================================================
 
 @app.get("/")
 def root():
 
     return {
-
         "message": "Welcome to HerdSense AI",
-
         "status": "Running",
-
-        "version": "1.0.0",
-
-        "environment": settings.APP_ENV,
-
-        "blockchain": settings.BASE_NETWORK,
     }
 
 
@@ -332,15 +235,8 @@ def root():
 # =============================================================================
 
 @app.get("/health")
-def health_check():
+def health():
 
     return {
-
         "server": "Healthy",
-
-        "service": "HerdSense AI API",
-
-        "environment": settings.APP_ENV,
-
-        "blockchain": settings.BASE_NETWORK,
     }

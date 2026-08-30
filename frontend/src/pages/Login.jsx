@@ -6,14 +6,30 @@ import "./Login.css";
 
 export default function Login() {
     const navigate = useNavigate();
-
     const [searchParams] = useSearchParams();
 
-    const verificationToken = searchParams.get("token");
+    // -------------------------------------------------------------------------
+    // SUPPORT BOTH VERIFICATION AND PASSWORD RESET LINKS
+    // -------------------------------------------------------------------------
 
-    const [mode, setMode] = useState(
-        verificationToken ? "verify" : "login"
-    );
+    const verificationToken =
+        searchParams.get("token") ||
+        searchParams.get("verify_token");
+
+    const resetToken =
+        searchParams.get("reset_token") ||
+        searchParams.get("token");
+
+    const urlMode = searchParams.get("mode");
+
+    const initialMode =
+        urlMode === "reset"
+            ? "reset"
+            : verificationToken
+              ? "verify"
+              : "login";
+
+    const [mode, setMode] = useState(initialMode);
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -30,7 +46,8 @@ export default function Login() {
 
     const [theme, setTheme] = useState(() => {
         return (
-            localStorage.getItem("herdsense-theme") || "dark"
+            localStorage.getItem("herdsense-theme") ||
+            "dark"
         );
     });
 
@@ -57,11 +74,11 @@ export default function Login() {
     };
 
     // =========================================================================
-    // VERIFY EMAIL FROM URL
+    // EMAIL VERIFICATION
     // =========================================================================
 
     useEffect(() => {
-        if (!verificationToken) {
+        if (!verificationToken || urlMode === "reset") {
             return;
         }
 
@@ -71,10 +88,12 @@ export default function Login() {
             setSuccess("");
 
             try {
-                const response = await api.post(
+                const response = await api.get(
                     "/auth/verify-email",
                     {
-                        token: verificationToken,
+                        params: {
+                            token: verificationToken,
+                        },
                     }
                 );
 
@@ -102,10 +121,10 @@ export default function Login() {
         };
 
         verifyAccount();
-    }, [verificationToken]);
+    }, [verificationToken, urlMode]);
 
     // =========================================================================
-    // MODE
+    // MODE SWITCH
     // =========================================================================
 
     const switchMode = (newMode) => {
@@ -114,8 +133,10 @@ export default function Login() {
         setError("");
         setSuccess("");
 
-        setPassword("");
-        setConfirmPassword("");
+        if (newMode === "login") {
+            setPassword("");
+            setConfirmPassword("");
+        }
 
         setShowPassword(false);
         setShowConfirmPassword(false);
@@ -131,11 +152,13 @@ export default function Login() {
         setError("");
         setSuccess("");
 
-        if (!email.trim() || !password) {
+        const normalizedEmail =
+            email.trim().toLowerCase();
+
+        if (!normalizedEmail || !password) {
             setError(
                 "Enter your email and password."
             );
-
             return;
         }
 
@@ -146,7 +169,7 @@ export default function Login() {
 
             formData.append(
                 "username",
-                email.trim().toLowerCase()
+                normalizedEmail
             );
 
             formData.append(
@@ -202,7 +225,7 @@ export default function Login() {
 
             localStorage.setItem(
                 "user_role",
-                authenticatedUser.role
+                authenticatedUser.role || "farmer"
             );
 
             if (
@@ -265,16 +288,21 @@ export default function Login() {
         setError("");
         setSuccess("");
 
+        const normalizedEmail =
+            email.trim().toLowerCase();
+
+        const normalizedName =
+            fullName.trim();
+
         if (
-            !fullName.trim() ||
-            !email.trim() ||
+            !normalizedName ||
+            !normalizedEmail ||
             !password ||
             !confirmPassword
         ) {
             setError(
                 "Complete all required fields."
             );
-
             return;
         }
 
@@ -282,7 +310,6 @@ export default function Login() {
             setError(
                 "Password must be at least 8 characters."
             );
-
             return;
         }
 
@@ -290,7 +317,6 @@ export default function Login() {
             setError(
                 "Passwords do not match."
             );
-
             return;
         }
 
@@ -300,24 +326,21 @@ export default function Login() {
             await api.post(
                 "/auth/register",
                 {
-                    full_name:
-                        fullName.trim(),
-
-                    email:
-                        email.trim().toLowerCase(),
-
+                    full_name: normalizedName,
+                    email: normalizedEmail,
                     password,
                 }
             );
 
+            setEmail(normalizedEmail);
+            setPassword("");
+            setConfirmPassword("");
+
             setSuccess(
-                "Account created. Check your Gmail inbox and verify your email before signing in."
+                "Account created successfully. Check your email and verify your account before signing in."
             );
 
             setMode("login");
-
-            setPassword("");
-            setConfirmPassword("");
         } catch (err) {
             console.error(
                 "Registration error:",
@@ -325,8 +348,10 @@ export default function Login() {
             );
 
             setError(
-                err.response?.data?.detail ||
-                    "Registration failed. Please check your connection and try again."
+                typeof err.response?.data?.detail ===
+                    "string"
+                    ? err.response.data.detail
+                    : "Registration failed. Please check your connection and try again."
             );
         } finally {
             setLoading(false);
@@ -343,11 +368,13 @@ export default function Login() {
         setError("");
         setSuccess("");
 
-        if (!email.trim()) {
+        const normalizedEmail =
+            email.trim().toLowerCase();
+
+        if (!normalizedEmail) {
             setError(
                 "Enter your email address."
             );
-
             return;
         }
 
@@ -357,8 +384,7 @@ export default function Login() {
             const response = await api.post(
                 "/auth/forgot-password",
                 {
-                    email:
-                        email.trim().toLowerCase(),
+                    email: normalizedEmail,
                 }
             );
 
@@ -395,7 +421,6 @@ export default function Login() {
             setError(
                 "Enter and confirm your new password."
             );
-
             return;
         }
 
@@ -403,7 +428,6 @@ export default function Login() {
             setError(
                 "Password must be at least 8 characters."
             );
-
             return;
         }
 
@@ -411,15 +435,13 @@ export default function Login() {
             setError(
                 "Passwords do not match."
             );
-
             return;
         }
 
-        if (!verificationToken) {
+        if (!resetToken) {
             setError(
                 "Password reset token is missing."
             );
-
             return;
         }
 
@@ -429,11 +451,8 @@ export default function Login() {
             const response = await api.post(
                 "/auth/reset-password",
                 {
-                    token:
-                        verificationToken,
-
-                    new_password:
-                        password,
+                    token: resetToken,
+                    new_password: password,
                 }
             );
 
@@ -469,11 +488,13 @@ export default function Login() {
         setError("");
         setSuccess("");
 
-        if (!email.trim()) {
+        const normalizedEmail =
+            email.trim().toLowerCase();
+
+        if (!normalizedEmail) {
             setError(
                 "Enter your email address first."
             );
-
             return;
         }
 
@@ -483,8 +504,7 @@ export default function Login() {
             const response = await api.post(
                 "/auth/resend-verification",
                 {
-                    email:
-                        email.trim().toLowerCase(),
+                    email: normalizedEmail,
                 }
             );
 
@@ -508,6 +528,34 @@ export default function Login() {
     };
 
     // =========================================================================
+    // SHARED MESSAGES
+    // =========================================================================
+
+    const renderMessages = () => (
+        <>
+            {error && (
+                <div
+                    className="login-error"
+                    role="alert"
+                >
+                    <span>!</span>
+                    <p>{error}</p>
+                </div>
+            )}
+
+            {success && (
+                <div
+                    className="login-success"
+                    role="status"
+                >
+                    <span>✓</span>
+                    <p>{success}</p>
+                </div>
+            )}
+        </>
+    );
+
+    // =========================================================================
     // AUTH CONTENT
     // =========================================================================
 
@@ -523,9 +571,13 @@ export default function Login() {
                         {loading ? "..." : "✓"}
                     </div>
 
+                    <div className="login-eyebrow">
+                        ACCOUNT VERIFICATION
+                    </div>
+
                     <h2>
                         {loading
-                            ? "Verifying email..."
+                            ? "Verifying email"
                             : "Email verification"}
                     </h2>
 
@@ -535,19 +587,7 @@ export default function Login() {
                             : "Your verification request has been processed."}
                     </p>
 
-                    {error && (
-                        <div className="login-error">
-                            <span>!</span>
-                            <p>{error}</p>
-                        </div>
-                    )}
-
-                    {success && (
-                        <div className="login-success">
-                            <span>✓</span>
-                            <p>{success}</p>
-                        </div>
-                    )}
+                    {renderMessages()}
 
                     {!loading && (
                         <button
@@ -571,7 +611,7 @@ export default function Login() {
         }
 
         // ---------------------------------------------------------------------
-        // RESET PASSWORD
+        // RESET
         // ---------------------------------------------------------------------
 
         if (mode === "reset") {
@@ -580,7 +620,19 @@ export default function Login() {
                     onSubmit={
                         handleResetPassword
                     }
+                    noValidate
                 >
+                    <div className="login-eyebrow">
+                        ACCOUNT SECURITY
+                    </div>
+
+                    <h2>Reset password</h2>
+
+                    <p className="login-subtitle">
+                        Create a new secure password
+                        for your HerdSense AI account.
+                    </p>
+
                     <div className="field">
                         <label htmlFor="resetPassword">
                             New password
@@ -673,19 +725,7 @@ export default function Login() {
                         </div>
                     </div>
 
-                    {error && (
-                        <div className="login-error">
-                            <span>!</span>
-                            <p>{error}</p>
-                        </div>
-                    )}
-
-                    {success && (
-                        <div className="login-success">
-                            <span>✓</span>
-                            <p>{success}</p>
-                        </div>
-                    )}
+                    {renderMessages()}
 
                     <button
                         type="submit"
@@ -725,7 +765,7 @@ export default function Login() {
         }
 
         // ---------------------------------------------------------------------
-        // FORGOT PASSWORD
+        // FORGOT
         // ---------------------------------------------------------------------
 
         if (mode === "forgot") {
@@ -734,7 +774,20 @@ export default function Login() {
                     onSubmit={
                         handleForgotPassword
                     }
+                    noValidate
                 >
+                    <div className="login-eyebrow">
+                        ACCOUNT RECOVERY
+                    </div>
+
+                    <h2>Forgot password?</h2>
+
+                    <p className="login-subtitle">
+                        Enter your email and we'll
+                        send you a secure password
+                        reset link.
+                    </p>
+
                     <div className="field">
                         <label htmlFor="forgotEmail">
                             Email address
@@ -761,19 +814,7 @@ export default function Login() {
                         </div>
                     </div>
 
-                    {error && (
-                        <div className="login-error">
-                            <span>!</span>
-                            <p>{error}</p>
-                        </div>
-                    )}
-
-                    {success && (
-                        <div className="login-success">
-                            <span>✓</span>
-                            <p>{success}</p>
-                        </div>
-                    )}
+                    {renderMessages()}
 
                     <button
                         type="submit"
@@ -794,6 +835,10 @@ export default function Login() {
                     </button>
 
                     <div className="auth-switch">
+                        <span>
+                            Remember your password?
+                        </span>
+
                         <button
                             type="button"
                             className="auth-switch-button"
@@ -801,7 +846,7 @@ export default function Login() {
                                 switchMode("login")
                             }
                         >
-                            ← Back to sign in
+                            Sign in
                         </button>
                     </div>
                 </form>
@@ -809,16 +854,55 @@ export default function Login() {
         }
 
         // ---------------------------------------------------------------------
-        // LOGIN
+        // REGISTER
         // ---------------------------------------------------------------------
 
-        if (mode === "login") {
+        if (mode === "register") {
             return (
                 <form
-                    onSubmit={handleLogin}
+                    onSubmit={handleRegister}
+                    noValidate
                 >
+                    <div className="login-eyebrow">
+                        HERDSENSE AI ACCESS
+                    </div>
+
+                    <h2>Create your account</h2>
+
+                    <p className="login-subtitle">
+                        Create an account to access
+                        your livestock intelligence
+                        platform.
+                    </p>
+
                     <div className="field">
-                        <label htmlFor="email">
+                        <label htmlFor="fullName">
+                            Full name
+                        </label>
+
+                        <div className="input-shell">
+                            <span className="input-icon">
+                                •
+                            </span>
+
+                            <input
+                                id="fullName"
+                                type="text"
+                                value={fullName}
+                                onChange={(e) =>
+                                    setFullName(
+                                        e.target.value
+                                    )
+                                }
+                                placeholder="Your full name"
+                                autoComplete="name"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="field">
+                        <label htmlFor="registerEmail">
                             Email address
                         </label>
 
@@ -828,7 +912,7 @@ export default function Login() {
                             </span>
 
                             <input
-                                id="email"
+                                id="registerEmail"
                                 type="email"
                                 value={email}
                                 onChange={(e) =>
@@ -844,21 +928,9 @@ export default function Login() {
                     </div>
 
                     <div className="field">
-                        <div className="password-label-row">
-                            <label htmlFor="password">
-                                Password
-                            </label>
-
-                            <button
-                                type="button"
-                                className="forgot-link"
-                                onClick={() =>
-                                    switchMode("forgot")
-                                }
-                            >
-                                Forgot password?
-                            </button>
-                        </div>
+                        <label htmlFor="registerPassword">
+                            Password
+                        </label>
 
                         <div className="input-shell">
                             <span className="input-icon">
@@ -866,7 +938,7 @@ export default function Login() {
                             </span>
 
                             <input
-                                id="password"
+                                id="registerPassword"
                                 type={
                                     showPassword
                                         ? "text"
@@ -878,8 +950,8 @@ export default function Login() {
                                         e.target.value
                                     )
                                 }
-                                placeholder="Enter your password"
-                                autoComplete="current-password"
+                                placeholder="Minimum 8 characters"
+                                autoComplete="new-password"
                                 required
                             />
 
@@ -900,19 +972,54 @@ export default function Login() {
                         </div>
                     </div>
 
-                    {error && (
-                        <div className="login-error">
-                            <span>!</span>
-                            <p>{error}</p>
-                        </div>
-                    )}
+                    <div className="field">
+                        <label htmlFor="confirmPassword">
+                            Confirm password
+                        </label>
 
-                    {success && (
-                        <div className="login-success">
-                            <span>✓</span>
-                            <p>{success}</p>
+                        <div className="input-shell">
+                            <span className="input-icon">
+                                •••
+                            </span>
+
+                            <input
+                                id="confirmPassword"
+                                type={
+                                    showConfirmPassword
+                                        ? "text"
+                                        : "password"
+                                }
+                                value={
+                                    confirmPassword
+                                }
+                                onChange={(e) =>
+                                    setConfirmPassword(
+                                        e.target.value
+                                    )
+                                }
+                                placeholder="Re-enter your password"
+                                autoComplete="new-password"
+                                required
+                            />
+
+                            <button
+                                type="button"
+                                className="show-password"
+                                onClick={() =>
+                                    setShowConfirmPassword(
+                                        (current) =>
+                                            !current
+                                    )
+                                }
+                            >
+                                {showConfirmPassword
+                                    ? "Hide"
+                                    : "Show"}
+                            </button>
                         </div>
-                    )}
+                    </div>
+
+                    {renderMessages()}
 
                     <button
                         type="submit"
@@ -921,8 +1028,8 @@ export default function Login() {
                     >
                         <span>
                             {loading
-                                ? "Authenticating..."
-                                : "Sign in"}
+                                ? "Creating account..."
+                                : "Create account"}
                         </span>
 
                         {!loading && (
@@ -932,36 +1039,19 @@ export default function Login() {
                         )}
                     </button>
 
-                    <div className="verification-resend">
-                        <span>
-                            Didn't receive your verification email?
-                        </span>
-
-                        <button
-                            type="button"
-                            className="auth-switch-button"
-                            onClick={
-                                handleResendVerification
-                            }
-                            disabled={loading}
-                        >
-                            Resend verification
-                        </button>
-                    </div>
-
                     <div className="auth-switch">
                         <span>
-                            New to HerdSense AI?
+                            Already have an account?
                         </span>
 
                         <button
                             type="button"
                             className="auth-switch-button"
                             onClick={() =>
-                                switchMode("register")
+                                switchMode("login")
                             }
                         >
-                            Create an account
+                            Sign in
                         </button>
                     </div>
                 </form>
@@ -969,41 +1059,27 @@ export default function Login() {
         }
 
         // ---------------------------------------------------------------------
-        // REGISTER
+        // LOGIN
         // ---------------------------------------------------------------------
 
         return (
             <form
-                onSubmit={handleRegister}
+                onSubmit={handleLogin}
+                noValidate
             >
-                <div className="field">
-                    <label htmlFor="fullName">
-                        Full name
-                    </label>
-
-                    <div className="input-shell">
-                        <span className="input-icon">
-                            ◉
-                        </span>
-
-                        <input
-                            id="fullName"
-                            type="text"
-                            value={fullName}
-                            onChange={(e) =>
-                                setFullName(
-                                    e.target.value
-                                )
-                            }
-                            placeholder="Your full name"
-                            autoComplete="name"
-                            required
-                        />
-                    </div>
+                <div className="login-eyebrow">
+                    HERDSENSE AI ACCESS
                 </div>
 
+                <h2>Welcome back</h2>
+
+                <p className="login-subtitle">
+                    Sign in to your livestock
+                    intelligence command center.
+                </p>
+
                 <div className="field">
-                    <label htmlFor="registerEmail">
+                    <label htmlFor="loginEmail">
                         Email address
                     </label>
 
@@ -1013,7 +1089,7 @@ export default function Login() {
                         </span>
 
                         <input
-                            id="registerEmail"
+                            id="loginEmail"
                             type="email"
                             value={email}
                             onChange={(e) =>
@@ -1029,9 +1105,21 @@ export default function Login() {
                 </div>
 
                 <div className="field">
-                    <label htmlFor="registerPassword">
-                        Password
-                    </label>
+                    <div className="password-label-row">
+                        <label htmlFor="loginPassword">
+                            Password
+                        </label>
+
+                        <button
+                            type="button"
+                            className="forgot-link"
+                            onClick={() =>
+                                switchMode("forgot")
+                            }
+                        >
+                            Forgot password?
+                        </button>
+                    </div>
 
                     <div className="input-shell">
                         <span className="input-icon">
@@ -1039,7 +1127,7 @@ export default function Login() {
                         </span>
 
                         <input
-                            id="registerPassword"
+                            id="loginPassword"
                             type={
                                 showPassword
                                     ? "text"
@@ -1051,8 +1139,8 @@ export default function Login() {
                                     e.target.value
                                 )
                             }
-                            placeholder="Minimum 8 characters"
-                            autoComplete="new-password"
+                            placeholder="Enter your password"
+                            autoComplete="current-password"
                             required
                         />
 
@@ -1073,66 +1161,7 @@ export default function Login() {
                     </div>
                 </div>
 
-                <div className="field">
-                    <label htmlFor="confirmPassword">
-                        Confirm password
-                    </label>
-
-                    <div className="input-shell">
-                        <span className="input-icon">
-                            •••
-                        </span>
-
-                        <input
-                            id="confirmPassword"
-                            type={
-                                showConfirmPassword
-                                    ? "text"
-                                    : "password"
-                            }
-                            value={
-                                confirmPassword
-                            }
-                            onChange={(e) =>
-                                setConfirmPassword(
-                                    e.target.value
-                                )
-                            }
-                            placeholder="Re-enter your password"
-                            autoComplete="new-password"
-                            required
-                        />
-
-                        <button
-                            type="button"
-                            className="show-password"
-                            onClick={() =>
-                                setShowConfirmPassword(
-                                    (current) =>
-                                        !current
-                                )
-                            }
-                        >
-                            {showConfirmPassword
-                                ? "Hide"
-                                : "Show"}
-                        </button>
-                    </div>
-                </div>
-
-                {error && (
-                    <div className="login-error">
-                        <span>!</span>
-                        <p>{error}</p>
-                    </div>
-                )}
-
-                {success && (
-                    <div className="login-success">
-                        <span>✓</span>
-                        <p>{success}</p>
-                    </div>
-                )}
+                {renderMessages()}
 
                 <button
                     type="submit"
@@ -1141,8 +1170,8 @@ export default function Login() {
                 >
                     <span>
                         {loading
-                            ? "Creating account..."
-                            : "Create account"}
+                            ? "Signing in..."
+                            : "Sign in"}
                     </span>
 
                     {!loading && (
@@ -1152,101 +1181,55 @@ export default function Login() {
                     )}
                 </button>
 
+                <div className="verification-resend">
+                    <span>
+                        Didn't verify your email?
+                    </span>
+
+                    <button
+                        type="button"
+                        className="auth-switch-button"
+                        onClick={
+                            handleResendVerification
+                        }
+                        disabled={loading}
+                    >
+                        Resend verification
+                    </button>
+                </div>
+
                 <div className="auth-switch">
                     <span>
-                        Already have an account?
+                        Don't have an account?
                     </span>
 
                     <button
                         type="button"
                         className="auth-switch-button"
                         onClick={() =>
-                            switchMode("login")
+                            switchMode("register")
                         }
                     >
-                        Sign in
+                        Create account
                     </button>
+                </div>
+
+                <div className="secure-note">
+                    <span className="secure-check">
+                        ✓
+                    </span>
+
+                    <span>
+                        Secure authentication
+                        protected by HerdSense AI
+                    </span>
                 </div>
             </form>
         );
     };
 
     // =========================================================================
-    // TITLES
-    // =========================================================================
-
-    const getEyebrow = () => {
-        if (mode === "register") {
-            return "FARMER REGISTRATION";
-        }
-
-        if (mode === "forgot") {
-            return "ACCOUNT RECOVERY";
-        }
-
-        if (mode === "reset") {
-            return "PASSWORD RECOVERY";
-        }
-
-        if (mode === "verify") {
-            return "EMAIL VERIFICATION";
-        }
-
-        return "SECURE ACCESS";
-    };
-
-    const getTitle = () => {
-        if (mode === "register") {
-            return "Create your account.";
-        }
-
-        if (mode === "forgot") {
-            return "Recover your account.";
-        }
-
-        if (mode === "reset") {
-            return "Set a new password.";
-        }
-
-        if (mode === "verify") {
-            return "Verify your account.";
-        }
-
-        return "Welcome back.";
-    };
-
-    const getSubtitle = () => {
-        if (mode === "register") {
-            return (
-                "Create your HerdSense AI account to begin monitoring your livestock."
-            );
-        }
-
-        if (mode === "forgot") {
-            return (
-                "Enter your email and we'll send you a secure password reset link."
-            );
-        }
-
-        if (mode === "reset") {
-            return (
-                "Choose a strong new password for your HerdSense AI account."
-            );
-        }
-
-        if (mode === "verify") {
-            return (
-                "We're confirming your email address."
-            );
-        }
-
-        return (
-            "Sign in to your HerdSense command center."
-        );
-    };
-
-    // =========================================================================
-    // UI
+    // PAGE
     // =========================================================================
 
     return (
@@ -1254,12 +1237,7 @@ export default function Login() {
             <div className="login-grid" />
 
             <div className="login-glow login-glow-one" />
-
             <div className="login-glow login-glow-two" />
-
-            {/* ================================================================
-                HEADER
-            ================================================================= */}
 
             <header className="login-header">
                 <button
@@ -1274,168 +1252,136 @@ export default function Login() {
                             : "☾"}
                     </span>
 
-                    {theme === "dark"
-                        ? "Light"
-                        : "Dark"}
+                    <span>
+                        {theme === "dark"
+                            ? "Light"
+                            : "Dark"}
+                    </span>
                 </button>
             </header>
 
-            {/* ================================================================
-                MAIN
-            ================================================================= */}
-
             <main className="login-main">
-
-                {/* ============================================================
-                    HERO
-                ============================================================= */}
-
                 <section className="login-hero">
-
                     <div className="system-status">
                         <span className="system-status-dot" />
-
-                        SYSTEM ONLINE
+                        <span>
+                            HERDSENSE AI ·
+                            INTELLIGENCE SYSTEM
+                        </span>
                     </div>
 
                     <h1>
                         Intelligence
                         <br />
-                        for every animal.
+                        for every
+                        <br />
+                        animal.
                     </h1>
 
                     <p className="hero-description">
-                        Monitor livestock health,
-                        telemetry and alerts from
-                        a single operational command
-                        center.
+                        A unified livestock
+                        intelligence platform for
+                        monitoring animal health,
+                        telemetry, environmental
+                        conditions and actionable
+                        insights.
                     </p>
 
                     <div className="feature-list">
-
                         <div className="feature-item">
-
                             <span className="feature-number">
                                 01
                             </span>
 
                             <div>
                                 <strong>
-                                    Live telemetry
+                                    LIVE ANIMAL
+                                    INTELLIGENCE
                                 </strong>
 
                                 <span>
-                                    Continuous sensor monitoring
+                                    Monitor health and
+                                    behavioral signals
+                                    in real time.
                                 </span>
                             </div>
-
                         </div>
 
                         <div className="feature-item">
-
                             <span className="feature-number">
                                 02
                             </span>
 
                             <div>
                                 <strong>
-                                    Health intelligence
+                                    TELEMETRY
+                                    ANALYTICS
                                 </strong>
 
                                 <span>
-                                    Detect abnormal animal conditions
+                                    Transform animal
+                                    data into
+                                    operational
+                                    decisions.
                                 </span>
                             </div>
-
                         </div>
 
                         <div className="feature-item">
-
                             <span className="feature-number">
                                 03
                             </span>
 
                             <div>
                                 <strong>
-                                    Operational alerts
+                                    PROACTIVE
+                                    ALERTS
                                 </strong>
 
                                 <span>
-                                    Respond before problems escalate
+                                    Identify abnormal
+                                    conditions before
+                                    they escalate.
                                 </span>
                             </div>
-
                         </div>
-
                     </div>
-
                 </section>
 
-                {/* ============================================================
-                    AUTH CARD
-                ============================================================= */}
-
                 <section className="login-card">
-
                     <div className="login-card-inner">
-
-                        {/* OFFICIAL HERDSENSE LOGO */}
-
                         <div className="login-card-logo">
                             <img
-                                src="/Qm6NSEu-_400x400.jpg"
-                                alt="herdsense"
+                                src="/herdsense-logo.jpg"
+                                alt="HerdSense AI"
+                                className="herdsense-logo-image"
+                                onError={(event) => {
+                                    console.error(
+                                        "HerdSense AI logo failed to load:",
+                                        event.currentTarget.src
+                                    );
+                                }}
                             />
                         </div>
 
-                        <div className="login-eyebrow">
-                            {getEyebrow()}
-                        </div>
-
-                        <h2>
-                            {getTitle()}
-                        </h2>
-
-                        <p className="login-subtitle">
-                            {getSubtitle()}
-                        </p>
-
                         {renderAuthContent()}
-
-                        <div className="secure-note">
-
-                            <span className="secure-check">
-                                ✓
-                            </span>
-
-                            Secure connection to HerdSense AI
-
-                        </div>
-
                     </div>
-
                 </section>
-
             </main>
 
-            {/* ================================================================
-                FOOTER
-            ================================================================= */}
-
             <footer className="login-footer">
-
                 <span>
-                    HerdSense AI
+                    © 2026 HerdSense AI
                 </span>
 
                 <span>
-                    Livestock intelligence platform
+                    LIVESTOCK INTELLIGENCE
+                    PLATFORM
                 </span>
 
                 <span>
-                    © 2026
+                    SECURE ACCESS
                 </span>
-
             </footer>
         </div>
     );

@@ -23,6 +23,15 @@ import Settings from "./pages/Settings";
 
 import AdminDashboard from "./pages/AdminDashboard";
 
+/*
+ * Wallet
+ *
+ * Thirdweb-powered wallet interface.
+ * Protected so only authenticated HerdSense AI users
+ * can access wallet and subscription functionality.
+ */
+import Wallet from "./pages/Wallet";
+
 
 /* ============================================================================
    PROTECTED ROUTE
@@ -157,6 +166,7 @@ export default function AppRoutes() {
                 }
             />
 
+
             {/* -----------------------------------------------------------------
                 PRIMARY ANIMAL INTELLIGENCE ROUTE
 
@@ -172,6 +182,7 @@ export default function AppRoutes() {
                     </ProtectedRoute>
                 }
             />
+
 
             {/* -----------------------------------------------------------------
                 DEDICATED ANIMAL INTELLIGENCE ROUTE
@@ -271,6 +282,32 @@ export default function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <Reports />
+                    </ProtectedRoute>
+                }
+            />
+
+
+            {/* =================================================================
+                WALLET & SUBSCRIPTIONS
+            =================================================================
+            
+                Thirdweb wallet integration.
+
+                Current purpose:
+                - Connect an existing wallet
+                - Create/use an embedded wallet through Thirdweb
+                - Display connected wallet
+                - Prepare for Base subscription payments
+
+                Subscription payment verification will be added
+                separately after wallet connectivity is confirmed.
+            ================================================================= */}
+
+            <Route
+                path="/wallet"
+                element={
+                    <ProtectedRoute>
+                        <Wallet />
                     </ProtectedRoute>
                 }
             />

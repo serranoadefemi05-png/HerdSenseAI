@@ -84,14 +84,48 @@ class User(Base):
     )
 
     # =========================================================================
+    # WALLET
+    # =========================================================================
+    #
+    # Stores only the PUBLIC blockchain wallet information.
+    #
+    # IMPORTANT:
+    # - Never store a private key here.
+    # - No subscription system.
+    # - No payment/billing logic.
+    # - Wallet connection is simply account ↔ public wallet association.
+    #
+
+    wallet_address = Column(
+        String,
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+
+    wallet_chain = Column(
+        String,
+        nullable=True,
+    )
+
+    wallet_connected_at = Column(
+        DateTime,
+        nullable=True,
+    )
+
+    # =========================================================================
     # COMPATIBILITY PROPERTY
     # =========================================================================
     #
-    # Existing authentication code uses `user.is_verified`,
-    # while the database column is `email_verified`.
+    # Existing authentication/dependency code may use:
     #
-    # This property keeps both names working without changing
-    # the PostgreSQL schema.
+    #     user.is_verified
+    #
+    # while the database column is:
+    #
+    #     email_verified
+    #
+    # Keep both working.
     #
 
     @property
@@ -100,6 +134,30 @@ class User(Base):
 
     @is_verified.setter
     def is_verified(self, value):
+        self.email_verified = value
+
+    # =========================================================================
+    # RESPONSE COMPATIBILITY PROPERTY
+    # =========================================================================
+    #
+    # UserResponse exposes:
+    #
+    #     is_email_verified
+    #
+    # while the database column is:
+    #
+    #     email_verified
+    #
+    # This property allows Pydantic's from_attributes=True
+    # to read the expected response field.
+    #
+
+    @property
+    def is_email_verified(self):
+        return self.email_verified
+
+    @is_email_verified.setter
+    def is_email_verified(self, value):
         self.email_verified = value
 
     # =========================================================================

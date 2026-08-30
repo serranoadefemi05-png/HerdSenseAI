@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -34,6 +35,19 @@ router = APIRouter(
     prefix="/api/v1/auth",
     tags=["Authentication"],
 )
+
+
+# =============================================================================
+# REQUEST SCHEMAS
+# =============================================================================
+
+
+class ResendVerificationRequest(BaseModel):
+    """
+    Request body for resending an email verification message.
+    """
+
+    email: EmailStr
 
 
 # =============================================================================
@@ -115,9 +129,6 @@ def provision_admin_accounts(
     """
     Ensure configured administrator accounts exist and are correctly
     configured.
-
-    IMPORTANT:
-    The User model uses `email_verified`, not `is_verified`.
     """
 
     configured_admins = (
@@ -184,20 +195,25 @@ def provision_admin_accounts(
                 existing_user.email_verified = True
                 changed = True
 
-            # Only attempt password verification when the stored hash exists.
             if not existing_user.hashed_password:
+
                 existing_user.hashed_password = (
                     hash_password(admin_password)
                 )
+
                 changed = True
 
             else:
+
                 try:
+
                     password_matches = verify_password(
                         admin_password,
                         existing_user.hashed_password,
                     )
+
                 except Exception as exc:
+
                     print(
                         "⚠️ HerdSense AI: "
                         "Unable to verify existing administrator "
@@ -207,12 +223,15 @@ def provision_admin_accounts(
                     password_matches = False
 
                 if not password_matches:
+
                     existing_user.hashed_password = (
                         hash_password(admin_password)
                     )
+
                     changed = True
 
             if changed:
+
                 db.commit()
                 db.refresh(existing_user)
 
@@ -257,8 +276,8 @@ def create_verification_token(
 
     return jwt.encode(
         payload,
-        settings.SECRET_KEY,
-        algorithm=settings.ALGORITHM,
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
     )
 
 
@@ -279,8 +298,8 @@ def register(
     """
     Register a new farmer account.
 
-    New accounts are unverified until the email verification link
-    is successfully used.
+    New accounts remain unverified until the email verification
+    link is successfully used.
     """
 
     email = (
@@ -298,18 +317,21 @@ def register(
     # -------------------------------------------------------------------------
 
     if not full_name:
+
         raise HTTPException(
             status_code=400,
             detail="Full name is required.",
         )
 
     if len(user.password) < 8:
+
         raise HTTPException(
             status_code=400,
             detail="Password must be at least 8 characters.",
         )
 
     if is_configured_admin_email(email):
+
         raise HTTPException(
             status_code=403,
             detail=(
@@ -331,6 +353,7 @@ def register(
     )
 
     if existing_user:
+
         raise HTTPException(
             status_code=400,
             detail="Email already registered.",
@@ -353,6 +376,7 @@ def register(
     db.add(new_user)
 
     try:
+
         db.commit()
         db.refresh(new_user)
 
@@ -382,9 +406,11 @@ def register(
             )
         )
 
+        # IMPORTANT:
+        # Login.jsx reads ?token=...
         verification_url = (
             f"{settings.FRONTEND_URL}"
-            f"/login?verify_token={verification_token}"
+            f"/login?token={verification_token}"
         )
 
         send_verification_email(
@@ -400,8 +426,8 @@ def register(
 
     except Exception as exc:
 
-        # The account has already been created.
-        # Do not delete the account simply because email delivery failed.
+        # Account has already been created.
+        # Do not delete it because email delivery failed.
 
         print(
             "❌ HerdSense AI verification email error:",
@@ -429,13 +455,14 @@ def verify_email(
 
         payload = jwt.decode(
             token,
-            settings.SECRET_KEY,
+            settings.JWT_SECRET_KEY,
             algorithms=[
-                settings.ALGORITHM
+                settings.JWT_ALGORITHM
             ],
         )
 
         if payload.get("purpose") != "email_verification":
+
             raise HTTPException(
                 status_code=400,
                 detail="Invalid verification token.",
@@ -444,6 +471,7 @@ def verify_email(
         email = payload.get("sub")
 
         if not email:
+
             raise HTTPException(
                 status_code=400,
                 detail="Invalid verification token.",
@@ -474,6 +502,7 @@ def verify_email(
     )
 
     if not user:
+
         raise HTTPException(
             status_code=404,
             detail="User account not found.",
@@ -519,7 +548,7 @@ def verify_email(
 
 @router.post("/resend-verification")
 def resend_verification(
-    email: str,
+    payload: ResendVerificationRequest,
     db: Session = Depends(get_db),
 ):
     """
@@ -529,7 +558,9 @@ def resend_verification(
     """
 
     normalized_email = (
-        email.strip().lower()
+        str(payload.email)
+        .strip()
+        .lower()
     )
 
     user = (
@@ -548,9 +579,11 @@ def resend_verification(
                 user.email
             )
 
+            # IMPORTANT:
+            # Login.jsx reads ?token=...
             verification_url = (
                 f"{settings.FRONTEND_URL}"
-                f"/login?verify_token={token}"
+                f"/login?token={token}"
             )
 
             send_verification_email(
@@ -609,6 +642,7 @@ def login(
     # -------------------------------------------------------------------------
 
     if not email or not password:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password.",
@@ -630,6 +664,7 @@ def login(
     )
 
     if user is None:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password.",
@@ -650,9 +685,6 @@ def login(
         )
 
     except ValueError as exc:
-
-        # bcrypt/passlib compatibility errors should not become
-        # unexplained 500 errors at the API boundary.
 
         print(
             "❌ HerdSense AI password verification error:",
@@ -679,6 +711,7 @@ def login(
         )
 
     if not password_valid:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password.",
@@ -695,13 +728,13 @@ def login(
 
         changed = False
 
-        # Force configured administrator accounts to admin role.
         if user.role != "admin":
+
             user.role = "admin"
             changed = True
 
-        # Configured administrators are automatically email verified.
         if not user.email_verified:
+
             user.email_verified = True
             changed = True
 
@@ -738,7 +771,7 @@ def login(
             status_code=403,
             detail=(
                 "Please verify your email address before signing in. "
-                "Check your Gmail inbox."
+                "Check your email inbox."
             ),
         )
 
@@ -755,20 +788,6 @@ def login(
 
     # =========================================================================
     # TOKEN USER
-    # =========================================================================
-    #
-    # IMPORTANT:
-    # TokenUser requires `is_email_verified`.
-    # The SQLAlchemy User model uses `email_verified`.
-    #
-    # Therefore:
-    #
-    #     user.email_verified
-    #
-    # becomes:
-    #
-    #     is_email_verified=user.email_verified
-    #
     # =========================================================================
 
     authenticated_user = TokenUser(
