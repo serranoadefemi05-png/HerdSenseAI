@@ -3,15 +3,20 @@ import { inAppWallet } from "thirdweb/wallets";
 
 const clientId = import.meta.env.VITE_THIRDWEB_CLIENT_ID;
 
-if (!clientId) {
-    console.warn(
-        "VITE_THIRDWEB_CLIENT_ID is not configured."
-    );
-}
+/*
+ * Thirdweb is an optional Web3 subsystem.
+ *
+ * The main HerdSense AI application must continue to load
+ * even when the Thirdweb client ID is unavailable.
+ */
 
-export const thirdwebClient = createThirdwebClient({
-    clientId,
-});
+export const thirdwebClient = clientId
+    ? createThirdwebClient({
+        clientId,
+    })
+    : null;
+
+export const isThirdwebConfigured = Boolean(clientId);
 
 
 /* ============================================================================

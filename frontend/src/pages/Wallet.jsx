@@ -6,9 +6,7 @@ import {
     useActiveWalletChain,
 } from "thirdweb/react";
 
-import {
-    base,
-} from "thirdweb/chains";
+import { base } from "thirdweb/chains";
 
 import {
     thirdwebClient,
@@ -32,6 +30,12 @@ import "./Wallet.css";
    - Load previously saved wallet
    - Disconnect wallet
 
+   IMPORTANT:
+   - Thirdweb is treated as an optional Web3 subsystem.
+   - A missing Thirdweb client ID must NEVER crash the entire application.
+   - Authentication, dashboard, telemetry and other application features
+     must remain available even when Web3 is unavailable.
+
    NOT INCLUDED:
    - Subscriptions
    - Payments
@@ -46,20 +50,15 @@ export default function Wallet() {
 
     const activeChain = useActiveWalletChain();
 
-    const [savedWallet, setSavedWallet] =
-        useState(null);
+    const [savedWallet, setSavedWallet] = useState(null);
 
-    const [loading, setLoading] =
-        useState(true);
+    const [loading, setLoading] = useState(true);
 
-    const [saving, setSaving] =
-        useState(false);
+    const [saving, setSaving] = useState(false);
 
-    const [error, setError] =
-        useState("");
+    const [error, setError] = useState("");
 
-    const [success, setSuccess] =
-        useState("");
+    const [success, setSuccess] = useState("");
 
 
     /* ========================================================================
@@ -78,18 +77,14 @@ export default function Wallet() {
 
                 setError("");
 
-                const response =
-                    await api.get(
-                        "/wallet"
-                    );
+                const response = await api.get("/wallet");
 
                 if (!mounted) {
                     return;
                 }
 
                 setSavedWallet(
-                    response.data?.wallet_address ||
-                    null
+                    response.data?.wallet_address || null
                 );
 
             } catch (err) {
@@ -113,6 +108,7 @@ export default function Wallet() {
                 if (mounted) {
                     setLoading(false);
                 }
+
             }
         }
 
@@ -131,9 +127,18 @@ export default function Wallet() {
 
     useEffect(() => {
 
-        if (!account?.address) {
+        /*
+         * If Thirdweb is unavailable or there is no connected wallet,
+         * there is nothing to save.
+         */
+
+        if (!thirdwebClient || !account?.address) {
             return;
         }
+
+
+        let mounted = true;
+
 
         async function saveWallet() {
 
@@ -145,11 +150,12 @@ export default function Wallet() {
 
                 setSuccess("");
 
+
                 /*
                  * HerdSense currently supports Base.
                  *
-                 * We send the canonical chain identifier
-                 * rather than trusting arbitrary frontend text.
+                 * Send the canonical chain identifier rather than trusting
+                 * arbitrary frontend text.
                  */
 
                 const walletChain =
@@ -160,28 +166,39 @@ export default function Wallet() {
                             base.id
                         );
 
-                const response =
-                    await api.post(
-                        "/wallet/connect",
-                        {
-                            wallet_address:
-                                account.address,
 
-                            wallet_chain:
-                                walletChain,
-                        }
-                    );
+                const response = await api.post(
+                    "/wallet/connect",
+                    {
+                        wallet_address:
+                            account.address,
+
+                        wallet_chain:
+                            walletChain,
+                    }
+                );
+
+
+                if (!mounted) {
+                    return;
+                }
+
 
                 setSavedWallet(
                     response.data?.wallet_address ||
                     account.address
                 );
 
+
                 setSuccess(
                     "Wallet connected to your HerdSense AI account."
                 );
 
             } catch (err) {
+
+                if (!mounted) {
+                    return;
+                }
 
                 console.error(
                     "[Wallet] Failed to save wallet:",
@@ -195,16 +212,24 @@ export default function Wallet() {
 
             } finally {
 
-                setSaving(false);
+                if (mounted) {
+                    setSaving(false);
+                }
+
             }
         }
 
+
         /*
-         * Only save when the wallet address
-         * changes or becomes available.
+         * Save whenever the connected address or active chain changes.
          */
 
         saveWallet();
+
+
+        return () => {
+            mounted = false;
+        };
 
     }, [
         account?.address,
@@ -224,9 +249,7 @@ export default function Wallet() {
 
             setSuccess("");
 
-            await api.delete(
-                "/wallet"
-            );
+            await api.delete("/wallet");
 
             setSavedWallet(null);
 
@@ -275,6 +298,7 @@ export default function Wallet() {
     ======================================================================== */
 
     return (
+
         <AppShell>
 
             <main className="wallet-page">
@@ -312,7 +336,7 @@ export default function Wallet() {
                 <section className="wallet-panel">
 
                     <div className="wallet-panel-icon">
-                        ◈
+                        ◉
                     </div>
 
 
@@ -322,11 +346,13 @@ export default function Wallet() {
 
 
                     <h2>
+
                         {account
                             ? "Wallet connected"
                             : savedWallet
                             ? "Wallet linked"
                             : "Connect your wallet"}
+
                     </h2>
 
 
@@ -338,35 +364,63 @@ export default function Wallet() {
 
 
                     {/* ========================================================
-                        STATUS
+                        LOADING STATUS
                     ======================================================== */}
 
                     {loading && (
+
                         <div className="wallet-status">
+
                             Loading wallet information...
+
                         </div>
+
                     )}
 
+
+                    {/* ========================================================
+                        SAVING STATUS
+                    ======================================================== */}
 
                     {saving && (
+
                         <div className="wallet-status">
+
                             Saving wallet to your HerdSense
                             account...
+
                         </div>
+
                     )}
 
+
+                    {/* ========================================================
+                        SUCCESS STATUS
+                    ======================================================== */}
 
                     {success && (
+
                         <div className="wallet-status wallet-success">
+
                             {success}
+
                         </div>
+
                     )}
 
 
+                    {/* ========================================================
+                        ERROR STATUS
+                    ======================================================== */}
+
                     {error && (
+
                         <div className="wallet-status wallet-error">
+
                             {error}
+
                         </div>
+
                     )}
 
 
@@ -374,15 +428,29 @@ export default function Wallet() {
                         THIRDWEB CONNECT BUTTON
                     ======================================================== */}
 
-                    <ConnectButton
-                        client={thirdwebClient}
-                        chains={[base]}
-                        connectModal={{
-                            size: "wide",
-                            title: "HerdSense AI Wallet",
-                            showThirdwebBranding: false,
-                        }}
-                    />
+                    {thirdwebClient ? (
+
+                        <ConnectButton
+                            client={thirdwebClient}
+                            chains={[base]}
+                            connectModal={{
+                                size: "wide",
+                                title: "HerdSense AI Wallet",
+                                showThirdwebBranding: false,
+                            }}
+                        />
+
+                    ) : (
+
+                        <div className="wallet-status wallet-error">
+
+                            Web3 wallet connection is
+                            temporarily unavailable.
+                            Please try again later.
+
+                        </div>
+
+                    )}
 
 
                     {/* ========================================================
@@ -390,6 +458,7 @@ export default function Wallet() {
                     ======================================================== */}
 
                     {account?.address && (
+
                         <div className="wallet-address">
 
                             <span>
@@ -403,6 +472,7 @@ export default function Wallet() {
                             </strong>
 
                         </div>
+
                     )}
 
 
@@ -426,6 +496,7 @@ export default function Wallet() {
                             </strong>
 
                         </div>
+
                     )}
 
 
@@ -452,5 +523,6 @@ export default function Wallet() {
             </main>
 
         </AppShell>
+
     );
 }
