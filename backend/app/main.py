@@ -63,7 +63,35 @@ allowed_origins = [
     # Render production frontend
     # -------------------------------------------------------------------------
     "https://herdsenseai-frontend.onrender.com",
+
+    # -------------------------------------------------------------------------
+    # Cloudflare Pages production frontend
+    # -------------------------------------------------------------------------
+    "https://herdsenseai.pages.dev",
 ]
+
+
+# =============================================================================
+# CLOUDFLARE PAGES PREVIEW ORIGINS
+# =============================================================================
+#
+# Cloudflare Pages creates preview deployments with hostnames such as:
+#
+#     https://930bf764.herdsenseai.pages.dev
+#
+# The preview identifier changes between deployments, so adding individual
+# preview URLs to allow_origins would be fragile.
+#
+# This regex allows any HTTPS subdomain directly under:
+#
+#     herdsenseai.pages.dev
+#
+# while NOT allowing arbitrary external domains.
+# =============================================================================
+
+allowed_origin_regex = (
+    r"^https://([a-zA-Z0-9-]+\.)?herdsenseai\.pages\.dev$"
+)
 
 
 # =============================================================================
@@ -179,6 +207,8 @@ app.add_middleware(
     CORSMiddleware,
 
     allow_origins=allowed_origins,
+
+    allow_origin_regex=allowed_origin_regex,
 
     allow_credentials=True,
 
