@@ -5,8 +5,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import AppShell from "../components/AppShell";
+
 import "./Settings.css";
+
 
 /* ==========================================================================
    CONFIGURATION
@@ -31,6 +34,7 @@ const REFRESH_OPTIONS = [
     },
 ];
 
+
 const DEFAULT_SETTINGS = {
     theme: "light",
     refreshInterval: "30",
@@ -39,12 +43,14 @@ const DEFAULT_SETTINGS = {
     systemNotifications: true,
 };
 
+
 /* ==========================================================================
    STORAGE HELPERS
    ========================================================================== */
 
 function readBoolean(key, fallback = true) {
-    const value = localStorage.getItem(key);
+    const value =
+        localStorage.getItem(key);
 
     if (value === null) {
         return fallback;
@@ -53,31 +59,159 @@ function readBoolean(key, fallback = true) {
     return value !== "false";
 }
 
+
+/* ==========================================================================
+   USER HELPERS
+   ========================================================================== */
+
+function getStoredUser() {
+    try {
+        const rawUser =
+            localStorage.getItem(
+                "herdsense_user"
+            );
+
+        if (!rawUser) {
+            return {};
+        }
+
+        const parsedUser =
+            JSON.parse(rawUser);
+
+        if (
+            !parsedUser ||
+            typeof parsedUser !== "object"
+        ) {
+            return {};
+        }
+
+        return parsedUser;
+
+    } catch {
+        return {};
+    }
+}
+
+
+function getInitials(name = "") {
+    const cleanName =
+        String(name)
+            .trim()
+            .replace(/\s+/g, " ");
+
+    if (!cleanName) {
+        return "U";
+    }
+
+    const parts =
+        cleanName
+            .split(" ")
+            .filter(Boolean);
+
+    if (parts.length === 1) {
+        return parts[0]
+            .charAt(0)
+            .toUpperCase();
+    }
+
+    return (
+        parts[0].charAt(0) +
+        parts[parts.length - 1].charAt(0)
+    ).toUpperCase();
+}
+
+
+function formatRole(role) {
+    if (!role) {
+        return "User";
+    }
+
+    const normalized =
+        String(role)
+            .trim()
+            .toLowerCase();
+
+    if (normalized === "admin") {
+        return "Administrator";
+    }
+
+    if (normalized === "farmer") {
+        return "Farmer";
+    }
+
+    if (normalized === "user") {
+        return "User";
+    }
+
+    return normalized
+        .replace(/[_-]+/g, " ")
+        .replace(/\b\w/g, (letter) =>
+            letter.toUpperCase()
+        );
+}
+
+
+function getAccessLabel(role) {
+    const normalized =
+        String(role || "")
+            .trim()
+            .toLowerCase();
+
+    if (normalized === "admin") {
+        return "Full command center";
+    }
+
+    if (normalized === "farmer") {
+        return "Farm operations";
+    }
+
+    return "Standard platform access";
+}
+
+
 /* ==========================================================================
    COMPONENT
    ========================================================================== */
 
 export default function Settings() {
+
     const navigate = useNavigate();
+
+
+    /* ======================================================================
+       AUTHENTICATED USER
+    ====================================================================== */
+
+    const [user, setUser] =
+        useState(() =>
+            getStoredUser()
+        );
+
 
     /* ======================================================================
        STATE
-       ====================================================================== */
+    ====================================================================== */
 
-    const [darkMode, setDarkMode] = useState(() => {
-        return (
-            localStorage.getItem("theme") === "dark"
-        );
-    });
+    const [darkMode, setDarkMode] =
+        useState(() => {
+            return (
+                localStorage.getItem(
+                    "theme"
+                ) === "dark"
+            );
+        });
+
 
     const [refreshInterval, setRefreshInterval] =
         useState(() => {
             return (
                 localStorage.getItem(
                     "telemetry_refresh_interval"
-                ) || DEFAULT_SETTINGS.refreshInterval
+                ) ||
+                DEFAULT_SETTINGS.refreshInterval
             );
         });
+
 
     const [criticalAlerts, setCriticalAlerts] =
         useState(() =>
@@ -87,6 +221,7 @@ export default function Settings() {
             )
         );
 
+
     const [warningAlerts, setWarningAlerts] =
         useState(() =>
             readBoolean(
@@ -94,6 +229,7 @@ export default function Settings() {
                 DEFAULT_SETTINGS.warningAlerts
             )
         );
+
 
     const [systemNotifications, setSystemNotifications] =
         useState(() =>
@@ -103,63 +239,185 @@ export default function Settings() {
             )
         );
 
-    const [saved, setSaved] = useState(false);
+
+    const [saved, setSaved] =
+        useState(false);
+
+
+    /* ======================================================================
+       USER PROFILE VALUES
+    ====================================================================== */
+
+    const userName =
+        useMemo(() => {
+
+            return (
+                user?.full_name ||
+                user?.name ||
+                user?.email ||
+                "User"
+            );
+
+        }, [user]);
+
+
+    const userInitials =
+        useMemo(() => {
+
+            return getInitials(
+                userName
+            );
+
+        }, [userName]);
+
+
+    const userRole =
+        useMemo(() => {
+
+            return (
+                user?.role ||
+                localStorage.getItem(
+                    "user_role"
+                ) ||
+                "user"
+            );
+
+        }, [user]);
+
+
+    const displayRole =
+        formatRole(userRole);
+
+
+    const accessLabel =
+        getAccessLabel(userRole);
+
+
+    const roleBadge =
+        String(userRole)
+            .trim()
+            .toLowerCase() === "admin"
+            ? "ADMIN"
+            : String(userRole)
+                .trim()
+                .toUpperCase();
+
 
     /* ======================================================================
        CURRENT SYSTEM STATE
-       ====================================================================== */
+    ====================================================================== */
 
-    const systemState = useMemo(
-        () => ({
-            api: true,
-            authentication:
-                Boolean(
-                    localStorage.getItem(
-                        "access_token"
-                    )
-                ),
-            telemetry: true,
-        }),
-        []
-    );
+    const systemState =
+        useMemo(
+            () => ({
+                api: true,
+
+                authentication:
+                    Boolean(
+                        localStorage.getItem(
+                            "access_token"
+                        )
+                    ),
+
+                telemetry: true,
+            }),
+            []
+        );
+
+
+    /* ======================================================================
+       REFRESH USER PROFILE
+    ====================================================================== */
+
+    useEffect(() => {
+
+        const refreshUser = () => {
+
+            setUser(
+                getStoredUser()
+            );
+
+        };
+
+
+        window.addEventListener(
+            "storage",
+            refreshUser
+        );
+
+
+        window.addEventListener(
+            "herdsense-auth-changed",
+            refreshUser
+        );
+
+
+        return () => {
+
+            window.removeEventListener(
+                "storage",
+                refreshUser
+            );
+
+            window.removeEventListener(
+                "herdsense-auth-changed",
+                refreshUser
+            );
+
+        };
+
+    }, []);
+
 
     /* ======================================================================
        THEME SYNCHRONIZATION
-       ====================================================================== */
+    ====================================================================== */
 
     useEffect(() => {
-        const theme = darkMode
-            ? "dark"
-            : "light";
+
+        const theme =
+            darkMode
+                ? "dark"
+                : "light";
+
 
         document.documentElement.setAttribute(
             "data-theme",
             theme
         );
 
+
         localStorage.setItem(
             "theme",
             theme
         );
+
     }, [darkMode]);
+
 
     /* ======================================================================
        SAVE FEEDBACK
-       ====================================================================== */
+    ====================================================================== */
 
     const showSavedState = () => {
+
         setSaved(true);
 
         window.setTimeout(() => {
+
             setSaved(false);
+
         }, 2500);
+
     };
+
 
     /* ======================================================================
        SAVE SETTINGS
-       ====================================================================== */
+    ====================================================================== */
 
     const saveSettings = () => {
+
         localStorage.setItem(
             "theme",
             darkMode
@@ -167,63 +425,85 @@ export default function Settings() {
                 : "light"
         );
 
+
         localStorage.setItem(
             "telemetry_refresh_interval",
             refreshInterval
         );
 
+
         localStorage.setItem(
             "critical_alert_notifications",
-            String(criticalAlerts)
+            String(
+                criticalAlerts
+            )
         );
+
 
         localStorage.setItem(
             "warning_alert_notifications",
-            String(warningAlerts)
+            String(
+                warningAlerts
+            )
         );
+
 
         localStorage.setItem(
             "system_notifications",
-            String(systemNotifications)
+            String(
+                systemNotifications
+            )
         );
 
+
         showSavedState();
+
     };
+
 
     /* ======================================================================
        RESET
-       ====================================================================== */
+    ====================================================================== */
 
     const resetSettings = () => {
+
         setDarkMode(
-            DEFAULT_SETTINGS.theme === "dark"
+            DEFAULT_SETTINGS.theme ===
+            "dark"
         );
+
 
         setRefreshInterval(
             DEFAULT_SETTINGS.refreshInterval
         );
 
+
         setCriticalAlerts(
             DEFAULT_SETTINGS.criticalAlerts
         );
+
 
         setWarningAlerts(
             DEFAULT_SETTINGS.warningAlerts
         );
 
+
         setSystemNotifications(
             DEFAULT_SETTINGS.systemNotifications
         );
+
 
         localStorage.setItem(
             "theme",
             DEFAULT_SETTINGS.theme
         );
 
+
         localStorage.setItem(
             "telemetry_refresh_interval",
             DEFAULT_SETTINGS.refreshInterval
         );
+
 
         localStorage.setItem(
             "critical_alert_notifications",
@@ -232,12 +512,14 @@ export default function Settings() {
             )
         );
 
+
         localStorage.setItem(
             "warning_alert_notifications",
             String(
                 DEFAULT_SETTINGS.warningAlerts
             )
         );
+
 
         localStorage.setItem(
             "system_notifications",
@@ -246,30 +528,58 @@ export default function Settings() {
             )
         );
 
+
         showSavedState();
+
     };
+
 
     /* ======================================================================
        LOGOUT
-       ====================================================================== */
+    ====================================================================== */
 
     const handleLogout = () => {
+
         localStorage.removeItem(
             "access_token"
         );
 
-        navigate("/login", {
-            replace: true,
-        });
+        localStorage.removeItem(
+            "token"
+        );
+
+        localStorage.removeItem(
+            "user_role"
+        );
+
+        localStorage.removeItem(
+            "herdsense_user"
+        );
+
+
+        setUser({});
+
+
+        navigate(
+            "/login",
+            {
+                replace: true,
+            }
+        );
+
     };
+
 
     /* ======================================================================
        RENDER
-       ====================================================================== */
+    ====================================================================== */
 
     return (
+
         <AppShell>
+
             <div className="hs-settings-page">
+
 
                 {/* ==========================================================
                     HEADER
@@ -283,6 +593,7 @@ export default function Settings() {
                             SYSTEM CONTROL
                         </div>
 
+
                         <div className="hs-settings-title-row">
 
                             <h1>
@@ -295,6 +606,7 @@ export default function Settings() {
 
                         </div>
 
+
                         <p>
                             Configure the HerdSense AI
                             command center, monitoring
@@ -304,17 +616,23 @@ export default function Settings() {
 
                     </div>
 
+
                     <div className="hs-settings-header-actions">
 
                         {saved && (
+
                             <span className="hs-settings-saved">
+
                                 <span>
                                     ✓
                                 </span>
 
                                 Changes saved
+
                             </span>
+
                         )}
+
 
                         <button
                             type="button"
@@ -326,6 +644,7 @@ export default function Settings() {
                             Reset
                         </button>
 
+
                         <button
                             type="button"
                             className="hs-settings-save"
@@ -334,14 +653,17 @@ export default function Settings() {
                             }
                         >
                             Save changes
+
                             <span>
                                 →
                             </span>
+
                         </button>
 
                     </div>
 
                 </header>
+
 
                 {/* ==========================================================
                     SYSTEM OVERVIEW
@@ -365,6 +687,7 @@ export default function Settings() {
                         </span>
 
                     </div>
+
 
                     <div className="hs-overview-status">
 
@@ -393,6 +716,7 @@ export default function Settings() {
 
                 </section>
 
+
                 {/* ==========================================================
                     ACCOUNT
                 ========================================================== */}
@@ -401,61 +725,83 @@ export default function Settings() {
                     index="01"
                     icon="◉"
                     title="Account"
-                    description="Administrator identity and access context."
+                    description={
+                        `${displayRole} identity and access context.`
+                    }
                 >
 
                     <div className="hs-settings-card">
 
                         <div className="hs-account-profile">
 
+
                             <div className="hs-account-avatar">
-                                SA
+
+                                {userInitials}
+
                             </div>
+
 
                             <div className="hs-account-info">
 
                                 <div className="hs-account-name-row">
 
                                     <strong>
-                                        Serrano Adefemi
+                                        {userName}
                                     </strong>
 
+
                                     <span className="hs-account-badge">
-                                        ADMIN
+
+                                        {roleBadge}
+
                                     </span>
 
                                 </div>
 
+
                                 <span>
-                                    Administrator
+                                    {displayRole}
+                                    {" "}
                                     account
                                 </span>
 
                             </div>
 
+
                             <div className="hs-account-live">
 
                                 <span />
 
-                                SESSION ACTIVE
+                                {systemState.authentication
+                                    ? "SESSION ACTIVE"
+                                    : "SESSION UNAVAILABLE"}
 
                             </div>
 
                         </div>
 
+
                         <div className="hs-settings-divider" />
+
 
                         <div className="hs-account-details">
 
                             <AccountDetail
                                 label="ROLE"
-                                value="Administrator"
+                                value={
+                                    displayRole
+                                }
                             />
+
 
                             <AccountDetail
                                 label="ACCESS"
-                                value="Full command center"
+                                value={
+                                    accessLabel
+                                }
                             />
+
 
                             <AccountDetail
                                 label="AUTHENTICATION"
@@ -471,6 +817,7 @@ export default function Settings() {
                     </div>
 
                 </SettingsSection>
+
 
                 {/* ==========================================================
                     APPEARANCE
@@ -505,6 +852,7 @@ export default function Settings() {
 
                 </SettingsSection>
 
+
                 {/* ==========================================================
                     MONITORING
                 ========================================================== */}
@@ -523,6 +871,7 @@ export default function Settings() {
                             <div className="hs-settings-row-content">
 
                                 <div className="hs-row-title">
+
                                     <strong>
                                         Dashboard refresh
                                     </strong>
@@ -530,7 +879,9 @@ export default function Settings() {
                                     <span className="hs-row-chip">
                                         REST
                                     </span>
+
                                 </div>
+
 
                                 <span>
                                     Controls how frequently
@@ -539,6 +890,7 @@ export default function Settings() {
                                 </span>
 
                             </div>
+
 
                             <select
                                 className="hs-settings-select"
@@ -555,6 +907,7 @@ export default function Settings() {
 
                                 {REFRESH_OPTIONS.map(
                                     (option) => (
+
                                         <option
                                             key={
                                                 option.value
@@ -567,6 +920,7 @@ export default function Settings() {
                                                 option.label
                                             }
                                         </option>
+
                                     )
                                 )}
 
@@ -574,7 +928,9 @@ export default function Settings() {
 
                         </div>
 
+
                         <div className="hs-settings-divider" />
+
 
                         <div className="hs-settings-row">
 
@@ -592,6 +948,7 @@ export default function Settings() {
 
                                 </div>
 
+
                                 <span>
                                     WebSocket monitoring
                                     remains active for
@@ -599,6 +956,7 @@ export default function Settings() {
                                 </span>
 
                             </div>
+
 
                             <StatusPill
                                 label="LIVE"
@@ -610,6 +968,7 @@ export default function Settings() {
                     </div>
 
                 </SettingsSection>
+
 
                 {/* ==========================================================
                     ALERTS
@@ -636,7 +995,9 @@ export default function Settings() {
                             meta="PRIORITY"
                         />
 
+
                         <div className="hs-settings-divider" />
+
 
                         <SettingsToggle
                             title="Warning alerts"
@@ -650,7 +1011,9 @@ export default function Settings() {
                             meta="MONITOR"
                         />
 
+
                         <div className="hs-settings-divider" />
+
 
                         <SettingsToggle
                             title="System notifications"
@@ -667,6 +1030,7 @@ export default function Settings() {
                     </div>
 
                 </SettingsSection>
+
 
                 {/* ==========================================================
                     SYSTEM
@@ -687,7 +1051,9 @@ export default function Settings() {
                             status="Operational"
                         />
 
+
                         <div className="hs-settings-divider" />
+
 
                         <SystemStatusRow
                             title="Authentication"
@@ -702,7 +1068,9 @@ export default function Settings() {
                             }
                         />
 
+
                         <div className="hs-settings-divider" />
+
 
                         <SystemStatusRow
                             title="Telemetry network"
@@ -713,6 +1081,7 @@ export default function Settings() {
                     </div>
 
                 </SettingsSection>
+
 
                 {/* ==========================================================
                     SECURITY
@@ -735,21 +1104,24 @@ export default function Settings() {
                                     ✓
                                 </div>
 
+
                                 <div>
 
                                     <strong>
                                         Current session
                                     </strong>
 
+
                                     <span>
-                                        Authenticated
-                                        administrator
+                                        Authenticated{" "}
+                                        {displayRole.toLowerCase()}{" "}
                                         session.
                                     </span>
 
                                 </div>
 
                             </div>
+
 
                             <button
                                 type="button"
@@ -766,6 +1138,7 @@ export default function Settings() {
                     </div>
 
                 </SettingsSection>
+
 
                 {/* ==========================================================
                     FOOTER
@@ -786,6 +1159,7 @@ export default function Settings() {
 
                     </div>
 
+
                     <div className="hs-footer-meta">
 
                         <span>
@@ -793,6 +1167,7 @@ export default function Settings() {
                         </span>
 
                         <i />
+
 
                         <span>
                             © 2026
@@ -803,9 +1178,12 @@ export default function Settings() {
                 </footer>
 
             </div>
+
         </AppShell>
+
     );
 }
+
 
 /* ==========================================================================
    SETTINGS SECTION
@@ -827,15 +1205,18 @@ function SettingsSection({
                     {index}
                 </div>
 
+
                 <div className="hs-settings-section-icon">
                     {icon}
                 </div>
+
 
                 <div className="hs-settings-section-heading">
 
                     <h2>
                         {title}
                     </h2>
+
 
                     <p>
                         {description}
@@ -845,11 +1226,13 @@ function SettingsSection({
 
             </div>
 
+
             {children}
 
         </section>
     );
 }
+
 
 /* ==========================================================================
    ACCOUNT DETAIL
@@ -866,6 +1249,7 @@ function AccountDetail({
                 {label}
             </span>
 
+
             <strong>
                 {value}
             </strong>
@@ -873,6 +1257,7 @@ function AccountDetail({
         </div>
     );
 }
+
 
 /* ==========================================================================
    SETTINGS TOGGLE
@@ -896,19 +1281,24 @@ function SettingsToggle({
                         {title}
                     </strong>
 
+
                     {meta && (
+
                         <span className="hs-row-chip">
                             {meta}
                         </span>
+
                     )}
 
                 </div>
+
 
                 <span>
                     {description}
                 </span>
 
             </div>
+
 
             <button
                 type="button"
@@ -937,6 +1327,7 @@ function SettingsToggle({
     );
 }
 
+
 /* ==========================================================================
    SYSTEM INDICATOR
    ========================================================================== */
@@ -964,6 +1355,7 @@ function SystemIndicator({
     );
 }
 
+
 /* ==========================================================================
    STATUS PILL
    ========================================================================== */
@@ -989,6 +1381,7 @@ function StatusPill({
     );
 }
 
+
 /* ==========================================================================
    SYSTEM STATUS ROW
    ========================================================================== */
@@ -1005,6 +1398,7 @@ function SystemStatusRow({
             <div>
 
                 <div className="hs-system-title">
+
                     <strong>
                         {title}
                     </strong>
@@ -1012,9 +1406,11 @@ function SystemStatusRow({
                     <span>
                         {description}
                     </span>
+
                 </div>
 
             </div>
+
 
             <StatusPill
                 label={status}
