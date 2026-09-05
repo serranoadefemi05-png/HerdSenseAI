@@ -10,6 +10,8 @@ import AnimalRegistration from "./pages/AnimalRegistration";
 import AnimalIntelligence from "./pages/AnimalIntelligence";
 import AnimalVerification from "./pages/AnimalVerification";
 
+import FarmRegistration from "./pages/FarmRegistration";
+
 import ManualTelemetry from "./pages/ManualTelemetry";
 import Telemetry from "./pages/Telemetry";
 
@@ -23,13 +25,6 @@ import Settings from "./pages/Settings";
 
 import AdminDashboard from "./pages/AdminDashboard";
 
-/*
- * Wallet
- *
- * Thirdweb-powered wallet interface.
- * Protected so only authenticated HerdSense AI users
- * can access wallet and subscription functionality.
- */
 import Wallet from "./pages/Wallet";
 
 
@@ -100,14 +95,6 @@ export default function AppRoutes() {
                 element={<Login />}
             />
 
-
-            {/* =================================================================
-                PUBLIC BLOCKCHAIN ANIMAL VERIFICATION
-
-                Example:
-                    /verify/animal/8
-            ================================================================= */}
-
             <Route
                 path="/verify/animal/:id"
                 element={
@@ -145,6 +132,20 @@ export default function AppRoutes() {
 
 
             {/* =================================================================
+                FARM OPERATIONS
+            ================================================================= */}
+
+            <Route
+                path="/farms/register"
+                element={
+                    <ProtectedRoute>
+                        <FarmRegistration />
+                    </ProtectedRoute>
+                }
+            />
+
+
+            {/* =================================================================
                 ANIMAL OPERATIONS
             ================================================================= */}
 
@@ -166,14 +167,6 @@ export default function AppRoutes() {
                 }
             />
 
-
-            {/* -----------------------------------------------------------------
-                PRIMARY ANIMAL INTELLIGENCE ROUTE
-
-                Example:
-                    /animals/8
-            ----------------------------------------------------------------- */}
-
             <Route
                 path="/animals/:id"
                 element={
@@ -182,17 +175,6 @@ export default function AppRoutes() {
                     </ProtectedRoute>
                 }
             />
-
-
-            {/* -----------------------------------------------------------------
-                DEDICATED ANIMAL INTELLIGENCE ROUTE
-
-                Example:
-                    /animals/8/intelligence
-
-                This intentionally renders the same production
-                AnimalIntelligence interface.
-            ----------------------------------------------------------------- */}
 
             <Route
                 path="/animals/:id/intelligence"
@@ -289,18 +271,6 @@ export default function AppRoutes() {
 
             {/* =================================================================
                 WALLET & SUBSCRIPTIONS
-            =================================================================
-            
-                Thirdweb wallet integration.
-
-                Current purpose:
-                - Connect an existing wallet
-                - Create/use an embedded wallet through Thirdweb
-                - Display connected wallet
-                - Prepare for Base subscription payments
-
-                Subscription payment verification will be added
-                separately after wallet connectivity is confirmed.
             ================================================================= */}
 
             <Route
@@ -328,7 +298,7 @@ export default function AppRoutes() {
 
 
             {/* =================================================================
-                ROOT ROUTE
+                ROOT
             ================================================================= */}
 
             <Route

@@ -1,0 +1,778 @@
+/* ==========================================================================
+   HERDSENSE AI — FARM REGISTRATION
+   Institutional dark interface
+========================================================================== */
+
+.hs-farm-registration {
+    min-height: 100%;
+    background:
+        radial-gradient(
+            circle at 80% 0%,
+            rgba(56, 217, 150, 0.045),
+            transparent 32%
+        );
+}
+
+.hs-farm-registration-content {
+    width: min(
+        100%,
+        1080px
+    );
+
+    margin: 0 auto;
+
+    padding:
+        34px
+        34px
+        48px;
+}
+
+
+/* ==========================================================================
+   HEADER
+========================================================================== */
+
+.hs-farm-registration-header {
+    margin-bottom: 28px;
+}
+
+.hs-farm-back-button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+
+    padding: 0;
+    margin-bottom: 34px;
+
+    color: #8e99a6;
+
+    font:
+        inherit;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.hs-farm-back-button:hover {
+    color: #f5f7fa;
+    transform: translateX(-2px);
+}
+
+.hs-farm-eyebrow,
+.hs-farm-section-label {
+    color: #687481;
+
+    font-size: 10px;
+    font-weight: 700;
+
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.hs-farm-registration-header h1 {
+    margin:
+        8px
+        0
+        10px;
+
+    color: #f5f7fa;
+
+    font-size: clamp(
+        32px,
+        4vw,
+        48px
+    );
+
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+}
+
+.hs-farm-registration-header p {
+    max-width: 670px;
+
+    margin: 0;
+
+    color: #8994a1;
+
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+
+/* ==========================================================================
+   CARD
+========================================================================== */
+
+.hs-farm-registration-card {
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.018),
+            rgba(255, 255, 255, 0)
+        ),
+        #0a0e13;
+
+    border:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.075
+        );
+
+    border-radius: 16px;
+
+    box-shadow:
+        0 24px 80px
+        rgba(
+            0,
+            0,
+            0,
+            0.22
+        );
+
+    overflow: hidden;
+}
+
+.hs-farm-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    padding:
+        25px
+        28px;
+
+    border-bottom:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.065
+        );
+}
+
+.hs-farm-card-header h2 {
+    margin:
+        7px
+        0
+        0;
+
+    color: #f5f7fa;
+
+    font-size: 20px;
+    letter-spacing: -0.02em;
+}
+
+.hs-farm-required-note {
+    color: #687481;
+
+    font-size: 11px;
+}
+
+
+/* ==========================================================================
+   FORM
+========================================================================== */
+
+.hs-farm-registration-card form {
+    padding: 28px;
+}
+
+.hs-farm-field {
+    margin-bottom: 25px;
+}
+
+.hs-farm-field label {
+    display: block;
+
+    margin-bottom: 9px;
+
+    color: #dce2e8;
+
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.hs-farm-field label span {
+    margin-left: 3px;
+    color: #38d996;
+}
+
+.hs-farm-field input {
+    width: 100%;
+    box-sizing: border-box;
+
+    height: 48px;
+
+    padding:
+        0
+        14px;
+
+    border:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.09
+        );
+
+    border-radius: 9px;
+
+    outline: none;
+
+    background: #070a0e;
+
+    color: #f5f7fa;
+
+    font:
+        inherit;
+
+    font-size: 14px;
+
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        background 160ms ease;
+}
+
+.hs-farm-field input::placeholder {
+    color: #4e5965;
+}
+
+.hs-farm-field input:focus {
+    border-color:
+        rgba(
+            56,
+            217,
+            150,
+            0.55
+        );
+
+    background: #090e13;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(
+            56,
+            217,
+            150,
+            0.08
+        );
+}
+
+.hs-farm-field input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.hs-farm-field small {
+    display: block;
+
+    margin-top: 8px;
+
+    color: #687481;
+
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+
+/* ==========================================================================
+   GPS HEADER
+========================================================================== */
+
+.hs-farm-location-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin:
+        34px
+        0
+        18px;
+
+    padding-top: 8px;
+
+    border-top:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.055
+        );
+}
+
+.hs-farm-location-header h3 {
+    margin:
+        7px
+        0
+        0;
+
+    color: #f5f7fa;
+
+    font-size: 16px;
+    letter-spacing: -0.01em;
+}
+
+.hs-farm-location-button {
+    flex-shrink: 0;
+
+    min-height: 38px;
+
+    padding:
+        0
+        13px;
+
+    border:
+        1px solid
+        rgba(
+            56,
+            217,
+            150,
+            0.24
+        );
+
+    border-radius: 8px;
+
+    background:
+        rgba(
+            56,
+            217,
+            150,
+            0.06
+        );
+
+    color: #8fe8c2;
+
+    font:
+        inherit;
+
+    font-size: 12px;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background 160ms ease,
+        border-color 160ms ease,
+        transform 160ms ease;
+}
+
+.hs-farm-location-button:hover:not(:disabled) {
+    background:
+        rgba(
+            56,
+            217,
+            150,
+            0.11
+        );
+
+    border-color:
+        rgba(
+            56,
+            217,
+            150,
+            0.42
+        );
+
+    transform: translateY(-1px);
+}
+
+.hs-farm-location-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
+/* ==========================================================================
+   COORDINATES
+========================================================================== */
+
+.hs-farm-coordinate-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(
+                0,
+                1fr
+            )
+        );
+
+    gap: 18px;
+}
+
+
+/* ==========================================================================
+   GPS NOTE
+========================================================================== */
+
+.hs-farm-gps-note {
+    display: flex;
+
+    gap: 13px;
+
+    padding: 16px;
+
+    margin:
+        2px
+        0
+        25px;
+
+    border:
+        1px solid
+        rgba(
+            101,
+            174,
+            252,
+            0.11
+        );
+
+    border-radius: 10px;
+
+    background:
+        rgba(
+            101,
+            174,
+            252,
+            0.035
+        );
+}
+
+.hs-farm-gps-icon {
+    display: flex;
+
+    width: 31px;
+    height: 31px;
+
+    flex: 0 0 31px;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background:
+        rgba(
+            101,
+            174,
+            252,
+            0.08
+        );
+
+    color: #65aefc;
+
+    font-size: 16px;
+}
+
+.hs-farm-gps-note div:last-child {
+    display: flex;
+    flex-direction: column;
+
+    gap: 4px;
+}
+
+.hs-farm-gps-note strong {
+    color: #cbd4dd;
+
+    font-size: 12px;
+}
+
+.hs-farm-gps-note span {
+    color: #687481;
+
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+
+/* ==========================================================================
+   FEEDBACK
+========================================================================== */
+
+.hs-farm-form-error,
+.hs-farm-form-success {
+    display: flex;
+    flex-direction: column;
+
+    gap: 4px;
+
+    padding: 14px 16px;
+
+    margin-bottom: 22px;
+
+    border-radius: 9px;
+
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.hs-farm-form-error {
+    border:
+        1px solid
+        rgba(
+            255,
+            94,
+            108,
+            0.2
+        );
+
+    background:
+        rgba(
+            255,
+            94,
+            108,
+            0.06
+        );
+
+    color: #ff9da5;
+}
+
+.hs-farm-form-success {
+    border:
+        1px solid
+        rgba(
+            56,
+            217,
+            150,
+            0.2
+        );
+
+    background:
+        rgba(
+            56,
+            217,
+            150,
+            0.06
+        );
+
+    color: #8fe8c2;
+}
+
+.hs-farm-form-error strong,
+.hs-farm-form-success strong {
+    color: inherit;
+}
+
+.hs-farm-form-error span,
+.hs-farm-form-success span {
+    opacity: 0.82;
+}
+
+
+/* ==========================================================================
+   ACTIONS
+========================================================================== */
+
+.hs-farm-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    padding-top: 23px;
+
+    border-top:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.055
+        );
+}
+
+.hs-farm-cancel-button,
+.hs-farm-submit-button {
+    min-height: 43px;
+
+    padding:
+        0
+        18px;
+
+    border-radius: 8px;
+
+    font:
+        inherit;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        transform 160ms ease,
+        opacity 160ms ease,
+        background 160ms ease;
+}
+
+.hs-farm-cancel-button {
+    border:
+        1px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.09
+        );
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.025
+        );
+
+    color: #9da7b2;
+}
+
+.hs-farm-submit-button {
+    border:
+        1px solid
+        rgba(
+            56,
+            217,
+            150,
+            0.35
+        );
+
+    background:
+        #38d996;
+
+    color: #06100b;
+
+    box-shadow:
+        0 8px 24px
+        rgba(
+            56,
+            217,
+            150,
+            0.12
+        );
+}
+
+.hs-farm-cancel-button:hover:not(:disabled),
+.hs-farm-submit-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.hs-farm-cancel-button:hover:not(:disabled) {
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.055
+        );
+
+    color: #e5e9ed;
+}
+
+.hs-farm-submit-button:hover:not(:disabled) {
+    background: #49e1a3;
+}
+
+.hs-farm-cancel-button:disabled,
+.hs-farm-submit-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
+/* ==========================================================================
+   FOOTER
+========================================================================== */
+
+.hs-farm-registration-footer {
+    display: flex;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin-top: 34px;
+
+    color: #4f5a66;
+
+    font-size: 10px;
+}
+
+.hs-farm-registration-footer span:first-child {
+    color: #697580;
+    font-weight: 700;
+}
+
+
+/* ==========================================================================
+   RESPONSIVE
+========================================================================== */
+
+@media (max-width: 720px) {
+
+    .hs-farm-registration-content {
+        padding:
+            24px
+            18px
+            35px;
+    }
+
+    .hs-farm-card-header {
+        align-items: flex-start;
+        flex-direction: column;
+
+        padding:
+            21px
+            19px;
+    }
+
+    .hs-farm-registration-card form {
+        padding:
+            21px
+            19px;
+    }
+
+    .hs-farm-coordinate-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .hs-farm-location-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .hs-farm-location-button {
+        width: 100%;
+    }
+
+    .hs-farm-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .hs-farm-cancel-button,
+    .hs-farm-submit-button {
+        width: 100%;
+    }
+
+    .hs-farm-registration-footer {
+        flex-direction: column;
+        gap: 7px;
+    }
+}

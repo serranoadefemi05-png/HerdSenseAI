@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
     ConnectButton,
     useActiveAccount,
     useActiveWalletChain,
+    useConnect,
 } from "thirdweb/react";
 
 import { base } from "thirdweb/chains";
 
-import { thirdwebClient } from "../services/thirdweb";
+import { thirdwebClient, herdSenseWallet } from "../services/thirdweb";
 
 import api from "../services/api";
 
@@ -21,15 +22,14 @@ import "./Wallet.css";
    HERDSENSE AI
    WALLET COMMAND CENTER
 
-   Scope:
-   - Thirdweb wallet connection
-   - Base network
-   - Save connected wallet to authenticated HerdSense account
-   - Load previously saved wallet
-   - Remove wallet from HerdSense account
+   Wallet architecture:
 
-   Web3 remains an optional subsystem. A missing Thirdweb client must never
-   prevent the rest of HerdSense AI from functioning.
+   - Every authenticated HerdSense account owns its own wallet association.
+   - Thirdweb in-app wallets can be created directly from this page.
+   - Existing external wallets can also be connected.
+   - HerdSense stores ONLY the public wallet address.
+   - Private keys are never sent to or stored by HerdSense.
+   - Platform / treasury wallets are separate from farmer wallets.
 ============================================================================ */
 
 
@@ -39,9 +39,13 @@ export default function Wallet() {
 
     const activeChain = useActiveWalletChain();
 
+    const { connect } = useConnect();
+
     const [savedWallet, setSavedWallet] = useState(null);
 
     const [loading, setLoading] = useState(true);
+
+    const [creating, setCreating] = useState(false);
 
     const [saving, setSaving] = useState(false);
 
@@ -52,6 +56,8 @@ export default function Wallet() {
     const [error, setError] = useState("");
 
     const [success, setSuccess] = useState("");
+
+    const [showCreateOptions, setShowCreateOptions] = useState(false);
 
 
     /* ========================================================================
@@ -72,14 +78,22 @@ export default function Wallet() {
         activeChain.id === base.id;
 
     const connectionState = isConnected
-        ? "CONNECTED"
+        ? isBaseNetwork
+            ? "CONNECTED"
+            : "WRONG NETWORK"
         : savedWallet
         ? "LINKED"
         : "NOT CONNECTED";
 
 
+    const shortConnectedAddress = useMemo(
+        () => formatAddress(connectedAddress),
+        [connectedAddress]
+    );
+
+
     /* ========================================================================
-       LOAD WALLET FROM HERDSENSE BACKEND
+       LOAD FARMER WALLET FROM HERDSENSE BACKEND
     ======================================================================== */
 
     useEffect(() => {
@@ -115,6 +129,31 @@ export default function Wallet() {
                     err
                 );
 
+                if (
+                    err?.response?.status === 401
+                ) {
+
+                    localStorage.removeItem(
+                        "access_token"
+                    );
+
+                    localStorage.removeItem(
+                        "token"
+                    );
+
+                    localStorage.removeItem(
+                        "user_role"
+                    );
+
+                    localStorage.removeItem(
+                        "herdsense_user"
+                    );
+
+                    window.location.href = "/login";
+
+                    return;
+                }
+
                 setError(
                     err?.response?.data?.detail ||
                     "Unable to load your wallet information."
@@ -139,12 +178,15 @@ export default function Wallet() {
 
 
     /* ========================================================================
-       SAVE CONNECTED THIRDWEB WALLET
+       SAVE ACTIVE WALLET TO AUTHENTICATED HERDSENSE ACCOUNT
     ======================================================================== */
 
     useEffect(() => {
 
-        if (!thirdwebClient || !account?.address) {
+        if (
+            !thirdwebClient ||
+            !account?.address
+        ) {
             return;
         }
 
@@ -189,8 +231,10 @@ export default function Wallet() {
                 );
 
                 setSuccess(
-                    "Wallet successfully linked to your HerdSense AI account."
+                    "Your wallet is now linked to this HerdSense AI account."
                 );
+
+                setShowCreateOptions(false);
 
             } catch (err) {
 
@@ -227,6 +271,98 @@ export default function Wallet() {
         account?.address,
         activeChain?.id,
     ]);
+
+
+    /* ========================================================================
+       CREATE HERDSENSE IN-APP WALLET
+    ======================================================================== */
+
+    async function createHerdSenseWallet(
+        strategy
+    ) {
+
+        if (!thirdwebClient) {
+
+            setError(
+                "Wallet creation is currently unavailable."
+            );
+
+            return;
+        }
+
+        try {
+
+            setCreating(true);
+
+            setError("");
+
+            setSuccess("");
+
+            /*
+             * Thirdweb in-app wallets are managed by Thirdweb.
+             *
+             * HerdSense never receives or stores the private key.
+             *
+             * The resulting public address is subsequently persisted
+             * against the currently authenticated HerdSense account.
+             */
+
+            await connect(async () => {
+
+                await herdSenseWallet.connect({
+                    client: thirdwebClient,
+                    chain: base,
+                    strategy,
+                    ...(strategy === "passkey"
+                        ? {
+                            type: "sign-up",
+                        }
+                        : {}),
+                });
+
+                return herdSenseWallet;
+            });
+
+            setSuccess(
+                "Your individual HerdSense wallet has been created. Finalizing your account link..."
+            );
+
+        } catch (err) {
+
+            console.error(
+                "[Wallet] Failed to create in-app wallet:",
+                err
+            );
+
+            const message =
+                err?.message ||
+                err?.response?.data?.detail ||
+                "";
+
+            if (
+                message
+                    .toLowerCase()
+                    .includes("cancel")
+            ) {
+
+                setError(
+                    "Wallet creation was cancelled."
+                );
+
+            } else {
+
+                setError(
+                    message ||
+                    "Unable to create your HerdSense wallet."
+                );
+
+            }
+
+        } finally {
+
+            setCreating(false);
+        }
+    }
 
 
     /* ========================================================================
@@ -288,7 +424,7 @@ export default function Wallet() {
 
             setCopied(true);
 
-            setTimeout(() => {
+            window.setTimeout(() => {
                 setCopied(false);
             }, 1800);
 
@@ -303,27 +439,6 @@ export default function Wallet() {
 
 
     /* ========================================================================
-       FORMAT ADDRESS
-    ======================================================================== */
-
-    function formatAddress(address) {
-
-        if (!address) {
-            return "";
-        }
-
-        if (address.length <= 14) {
-            return address;
-        }
-
-        return `${address.slice(
-            0,
-            8
-        )}...${address.slice(-8)}`;
-    }
-
-
-    /* ========================================================================
        RENDER
     ======================================================================== */
 
@@ -334,7 +449,7 @@ export default function Wallet() {
             <main className="wallet-page">
 
                 {/* ============================================================
-                    PAGE HEADER
+                    HEADER
                 ============================================================ */}
 
                 <header className="wallet-header">
@@ -350,14 +465,18 @@ export default function Wallet() {
                             <span
                                 className={
                                     `wallet-header-status ${
-                                        isConnected
+                                        isConnected &&
+                                        isBaseNetwork
                                             ? "is-connected"
                                             : ""
                                     }`
                                 }
                             >
+
                                 <span className="wallet-status-dot" />
+
                                 {connectionState}
+
                             </span>
 
                         </div>
@@ -367,18 +486,20 @@ export default function Wallet() {
                         </h1>
 
                         <p>
-                            Connect and manage the blockchain
-                            identity associated with your
-                            HerdSense AI account.
+                            Create or connect your individual
+                            blockchain wallet and associate it
+                            securely with your HerdSense AI account.
                         </p>
 
                     </div>
+
 
                     <div className="wallet-network-badge">
 
                         <span className="network-indicator" />
 
                         <div>
+
                             <small>
                                 NETWORK
                             </small>
@@ -386,6 +507,7 @@ export default function Wallet() {
                             <strong>
                                 Base
                             </strong>
+
                         </div>
 
                     </div>
@@ -409,22 +531,26 @@ export default function Wallet() {
                         <div className="wallet-card-top">
 
                             <div className="wallet-symbol">
-                                <span>◈</span>
+                                <span>
+                                    ◈
+                                </span>
                             </div>
 
                             <div>
 
                                 <span className="wallet-label">
-                                    WALLET IDENTITY
+                                    YOUR WALLET
                                 </span>
 
                                 <h2>
+
                                     {isConnected
                                         ? "Wallet connected"
                                         : savedWallet
                                         ? "Wallet linked"
-                                        : "Connect your wallet"
+                                        : "Create your wallet"
                                     }
+
                                 </h2>
 
                             </div>
@@ -435,13 +561,214 @@ export default function Wallet() {
                         <p className="wallet-card-description">
 
                             {isConnected
-                                ? "Your Web3 wallet is currently connected and associated with this HerdSense AI account."
+                                ? isBaseNetwork
+                                    ? "Your individual wallet is connected to HerdSense AI and ready for Base."
+                                    : "Your wallet is connected, but it is currently on a network other than Base."
                                 : savedWallet
-                                ? "A wallet is associated with your HerdSense AI account. Connect it again to access its active session."
-                                : "Connect a compatible Web3 wallet to establish your blockchain identity on Base."
+                                ? "This wallet belongs to your HerdSense AI account. Reconnect it to access the active blockchain session."
+                                : "Create an individual HerdSense wallet or connect an existing wallet. Your wallet belongs to your account, not to the HerdSense platform."
                             }
 
                         </p>
+
+
+                        {/* ====================================================
+                            NO WALLET STATE
+                        ==================================================== */}
+
+                        {!displayAddress && !loading && (
+
+                            <div className="wallet-create-panel">
+
+                                <div className="wallet-create-panel-icon">
+                                    ◇
+                                </div>
+
+                                <div className="wallet-create-panel-content">
+
+                                    <span className="wallet-label">
+                                        INDIVIDUAL WALLET
+                                    </span>
+
+                                    <h3>
+                                        Your wallet has not been created yet
+                                    </h3>
+
+                                    <p>
+                                        Create a personal blockchain
+                                        wallet for this HerdSense AI
+                                        account. You can use passkey,
+                                        Google, or email authentication
+                                        through Thirdweb.
+                                    </p>
+
+                                    <button
+                                        type="button"
+                                        className="wallet-create-button"
+                                        onClick={() =>
+                                            setShowCreateOptions(
+                                                (current) =>
+                                                    !current
+                                            )
+                                        }
+                                        disabled={creating}
+                                    >
+                                        {creating
+                                            ? "Creating wallet..."
+                                            : "Create HerdSense Wallet"
+                                        }
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        )}
+
+
+                        {/* ====================================================
+                            CREATE WALLET OPTIONS
+                        ==================================================== */}
+
+                        {showCreateOptions &&
+                            !displayAddress && (
+                                <div className="wallet-create-options">
+
+                                    <div className="wallet-create-options-heading">
+
+                                        <div>
+                                            <span className="wallet-label">
+                                                WALLET CREATION
+                                            </span>
+
+                                            <strong>
+                                                Choose how to secure your wallet
+                                            </strong>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            className="wallet-option-close"
+                                            onClick={() =>
+                                                setShowCreateOptions(
+                                                    false
+                                                )
+                                            }
+                                            aria-label="Close wallet creation options"
+                                        >
+                                            ×
+                                        </button>
+
+                                    </div>
+
+
+                                    <button
+                                        type="button"
+                                        className="wallet-auth-option"
+                                        onClick={() =>
+                                            createHerdSenseWallet(
+                                                "passkey"
+                                            )
+                                        }
+                                        disabled={creating}
+                                    >
+
+                                        <span className="wallet-auth-option-icon">
+                                            ◉
+                                        </span>
+
+                                        <span>
+
+                                            <strong>
+                                                Passkey
+                                            </strong>
+
+                                            <small>
+                                                Use your device biometric or
+                                                security key.
+                                            </small>
+
+                                        </span>
+
+                                        <span className="wallet-auth-arrow">
+                                            →
+                                        </span>
+
+                                    </button>
+
+
+                                    <button
+                                        type="button"
+                                        className="wallet-auth-option"
+                                        onClick={() =>
+                                            createHerdSenseWallet(
+                                                "google"
+                                            )
+                                        }
+                                        disabled={creating}
+                                    >
+
+                                        <span className="wallet-auth-option-icon">
+                                            G
+                                        </span>
+
+                                        <span>
+
+                                            <strong>
+                                                Google
+                                            </strong>
+
+                                            <small>
+                                                Use your Google identity to
+                                                secure the wallet.
+                                            </small>
+
+                                        </span>
+
+                                        <span className="wallet-auth-arrow">
+                                            →
+                                        </span>
+
+                                    </button>
+
+
+                                    <button
+                                        type="button"
+                                        className="wallet-auth-option"
+                                        onClick={() =>
+                                            createHerdSenseWallet(
+                                                "email"
+                                            )
+                                        }
+                                        disabled={creating}
+                                    >
+
+                                        <span className="wallet-auth-option-icon">
+                                            @
+                                        </span>
+
+                                        <span>
+
+                                            <strong>
+                                                Email
+                                            </strong>
+
+                                            <small>
+                                                Verify your email through
+                                                Thirdweb.
+                                            </small>
+
+                                        </span>
+
+                                        <span className="wallet-auth-arrow">
+                                            →
+                                        </span>
+
+                                    </button>
+
+                                </div>
+                            )
+                        }
 
 
                         {/* ====================================================
@@ -508,22 +835,42 @@ export default function Wallet() {
 
 
                         {/* ====================================================
-                            CONNECT / THIRDWEB
+                            EXTERNAL WALLET CONNECTION
                         ==================================================== */}
 
                         <div className="wallet-connect-area">
 
                             {thirdwebClient ? (
 
-                                <ConnectButton
-                                    client={thirdwebClient}
-                                    chains={[base]}
-                                    connectModal={{
-                                        size: "wide",
-                                        title: "Connect to HerdSense AI",
-                                        showThirdwebBranding: false,
-                                    }}
-                                />
+                                <div className="wallet-connect-stack">
+
+                                    <span className="wallet-connect-label">
+                                        {displayAddress
+                                            ? "SWITCH / CONNECT WALLET"
+                                            : "EXISTING WALLET"
+                                        }
+                                    </span>
+
+                                    <ConnectButton
+                                        client={
+                                            thirdwebClient
+                                        }
+                                        chains={[
+                                            base
+                                        ]}
+                                        wallets={[
+                                            herdSenseWallet
+                                        ]}
+                                        connectModal={{
+                                            size: "wide",
+                                            title:
+                                                "Connect to HerdSense AI",
+                                            showThirdwebBranding:
+                                                false,
+                                        }}
+                                    />
+
+                                </div>
 
                             ) : (
 
@@ -554,7 +901,7 @@ export default function Wallet() {
 
 
                         {/* ====================================================
-                            ACTION STATUS
+                            STATUS
                         ==================================================== */}
 
                         {loading && (
@@ -583,7 +930,7 @@ export default function Wallet() {
                                 </span>
 
                                 <span>
-                                    Linking wallet to your HerdSense AI account...
+                                    Linking your wallet to this HerdSense AI account...
                                 </span>
 
                             </div>
@@ -628,7 +975,7 @@ export default function Wallet() {
 
 
                     {/* ========================================================
-                        WEB3 STATUS CARD
+                        STATUS CARD
                     ======================================================== */}
 
                     <aside className="wallet-card wallet-status-card">
@@ -636,7 +983,7 @@ export default function Wallet() {
                         <div className="wallet-card-heading">
 
                             <span className="wallet-label">
-                                SYSTEM STATUS
+                                ACCOUNT STATUS
                             </span>
 
                             <span className="wallet-live-indicator">
@@ -657,25 +1004,27 @@ export default function Wallet() {
                                     </span>
 
                                     <span>
-                                        Wallet connection
+                                        Wallet
                                     </span>
 
                                 </div>
 
                                 <strong
                                     className={
-                                        isConnected
+                                        isConnected &&
+                                        isBaseNetwork
                                             ? "status-good"
                                             : savedWallet
                                             ? "status-neutral"
                                             : "status-muted"
                                     }
                                 >
-                                    {isConnected
+                                    {isConnected &&
+                                    isBaseNetwork
                                         ? "Active"
                                         : savedWallet
                                         ? "Linked"
-                                        : "Inactive"
+                                        : "Not created"
                                     }
                                 </strong>
 
@@ -696,8 +1045,19 @@ export default function Wallet() {
 
                                 </div>
 
-                                <strong className="status-good">
-                                    Base
+                                <strong
+                                    className={
+                                        isBaseNetwork
+                                            ? "status-good"
+                                            : "status-neutral"
+                                    }
+                                >
+                                    {isBaseNetwork
+                                        ? "Base"
+                                        : activeChain?.id
+                                            ? `Chain ${activeChain.id}`
+                                            : "Base"
+                                    }
                                 </strong>
 
                             </div>
@@ -784,7 +1144,7 @@ export default function Wallet() {
 
 
                     {/* ========================================================
-                        ACCOUNT LINKAGE CARD
+                        ACCOUNT OWNERSHIP CARD
                     ======================================================== */}
 
                     <article className="wallet-card wallet-info-card">
@@ -796,20 +1156,20 @@ export default function Wallet() {
                         <div>
 
                             <span className="wallet-label">
-                                ACCOUNT LINKAGE
+                                PERSONAL OWNERSHIP
                             </span>
 
                             <h3>
-                                One account. One blockchain identity.
+                                Your wallet belongs to your account.
                             </h3>
 
                             <p>
-                                Your connected wallet is linked to
-                                your authenticated HerdSense AI
-                                account. This allows blockchain
-                                records and future on-chain
-                                livestock infrastructure to be
-                                associated with your platform identity.
+                                Every HerdSense AI farmer account can
+                                have its own blockchain wallet. The
+                                wallet address is associated with your
+                                authenticated account and cannot be
+                                simultaneously linked to another
+                                HerdSense account.
                             </p>
 
                         </div>
@@ -818,7 +1178,7 @@ export default function Wallet() {
 
 
                     {/* ========================================================
-                        SECURITY / READINESS CARD
+                        WEB3 READINESS CARD
                     ======================================================== */}
 
                     <article className="wallet-card wallet-info-card">
@@ -834,14 +1194,14 @@ export default function Wallet() {
                             </span>
 
                             <h3>
-                                Built for on-chain infrastructure.
+                                Built for on-chain livestock infrastructure.
                             </h3>
 
                             <p>
-                                HerdSense AI is designed to connect
-                                livestock intelligence with
-                                blockchain identity, ownership,
-                                traceability and future financial
+                                Your wallet can become the blockchain
+                                identity layer for livestock ownership,
+                                verification, traceability, insurance,
+                                financing and future Base-native
                                 infrastructure.
                             </p>
 
@@ -853,7 +1213,7 @@ export default function Wallet() {
 
 
                 {/* ============================================================
-                    DANGER ZONE
+                    WALLET MANAGEMENT
                 ============================================================ */}
 
                 {savedWallet && (
@@ -871,10 +1231,10 @@ export default function Wallet() {
                             </h3>
 
                             <p>
-                                This removes the wallet association
-                                from your HerdSense AI account.
-                                It does not transfer funds or modify
-                                the blockchain wallet itself.
+                                This removes the public wallet address
+                                from your HerdSense AI account. It does
+                                not delete the blockchain wallet, transfer
+                                funds, or erase blockchain history.
                             </p>
 
                         </div>
@@ -885,7 +1245,9 @@ export default function Wallet() {
                             onClick={
                                 disconnectFromHerdSense
                             }
-                            disabled={disconnecting}
+                            disabled={
+                                disconnecting
+                            }
                         >
                             {disconnecting
                                 ? "Removing..."
@@ -899,13 +1261,13 @@ export default function Wallet() {
 
 
                 {/* ============================================================
-                    FOOTER NOTE
+                    FOOTER
                 ============================================================ */}
 
                 <footer className="wallet-footer">
 
                     <span>
-                        HERDSENSE AI / WEB3 INFRASTRUCTURE
+                        HERDSENSE AI / PERSONAL WEB3 IDENTITY
                     </span>
 
                     <span>
@@ -919,4 +1281,22 @@ export default function Wallet() {
         </AppShell>
 
     );
+}
+
+
+/* ============================================================================
+   ADDRESS FORMATTER
+============================================================================ */
+
+function formatAddress(address) {
+
+    if (!address) {
+        return "";
+    }
+
+    if (address.length <= 14) {
+        return address;
+    }
+
+    return `${address.slice(0, 8)}...${address.slice(-8)}`;
 }

@@ -1,26 +1,3 @@
-/*
-|--------------------------------------------------------------------------
-| HERDSENSE AI — COMMAND CENTER DASHBOARD
-|--------------------------------------------------------------------------
-| Production dashboard
-|
-| Responsibilities:
-| - Registered animal population
-| - Live telemetry
-| - Health classification
-| - Alert intelligence
-| - WebSocket synchronization
-| - Dashboard KPIs
-| - Live GPS monitoring
-|
-| IMPORTANT:
-| Disease-risk intelligence is NOT requested from this page.
-| Animal-specific disease prediction belongs to:
-|
-| /api/v1/intelligence/animal/{animal_id}/disease-risk
-|--------------------------------------------------------------------------
-*/
-
 import {
     useCallback,
     useEffect,
@@ -30,638 +7,404 @@ import {
 } from "react";
 
 import {
+    useLocation,
     useNavigate,
 } from "react-router-dom";
 
 import AppShell from "../components/AppShell";
-
-/*
- * IMPORTANT:
- * The actual directory is:
- *
- * src/components/map/MapView.jsx
- *
- * Linux/Render is case-sensitive.
- */
 import MapView from "../components/map/MapView";
-
 import api from "../api/api";
-
 import useTelemetrySocket from "../hooks/useTelemetrySocket";
-
 import "./Dashboard.css";
-
-/* ==========================================================================
-   CONFIGURATION
-========================================================================== */
 
 const REFRESH_INTERVAL = 30000;
 
 /* ==========================================================================
-   SAFE HELPERS
-========================================================================== */
+   DATA HELPERS
+   ========================================================================== */
 
-function getNumber(...values) {
-    for (const value of values) {
-        if (
-            value !== undefined &&
-            value !== null &&
-            value !== "" &&
-            Number.isFinite(
-                Number(value)
-            )
-        ) {
-            return Number(value);
-        }
+const getNumber = (value, fallback = null) => {
+    const number = Number(value);
+
+    return Number.isFinite(number)
+        ? number
+        : fallback;
+};
+
+const getAnimalId = (animal) => {
+    if (!animal) {
+        return undefined;
     }
 
-    return 0;
-}
-
-function getAnimalId(
-    animal,
-    reading
-) {
     return (
-        animal?.id ??
-        animal?.animal_id ??
-        animal?.tag_id ??
-        animal?.tagId ??
-        reading?.animal_id ??
-        reading?.animalId ??
-        reading?.tag_id ??
-        reading?.tagId ??
-        reading?.animal?.id ??
-        null
+        animal.id ??
+        animal.animal_id ??
+        animal.animalId ??
+        animal.tag_id ??
+        animal.tagId
     );
-}
+};
 
-function getAnimalName(
-    animal,
-    reading
-) {
-    const id =
-        getAnimalId(
-            animal,
-            reading
-        );
+const getAnimalName = (animal) => {
+    if (!animal) {
+        return "Unknown animal";
+    }
 
     return (
-        animal?.name ??
-        animal?.animal_name ??
-        animal?.animalName ??
-        reading?.animal_name ??
-        reading?.animalName ??
-        reading?.animal?.name ??
-        (id !== null
-            ? `Animal #${id}`
-            : "Unknown animal")
+        animal.name ||
+        animal.animal_name ||
+        animal.tag_id ||
+        animal.tagId ||
+        `Animal #${getAnimalId(animal) ?? "—"}`
     );
-}
+};
 
-function getTemperature(
-    reading
-) {
-    return getNumber(
-        reading?.temperature,
-        reading?.body_temperature,
-        reading?.bodyTemperature,
-        reading?.temp
+const getTemperature = (animal) =>
+    getNumber(
+        animal?.temperature ??
+            animal?.temp ??
+            animal?.temperature_c
     );
-}
 
-function getHeartRate(
-    reading
-) {
-    return getNumber(
-        reading?.heart_rate,
-        reading?.heartRate,
-        reading?.pulse
+const getHeartRate = (animal) =>
+    getNumber(
+        animal?.heart_rate ??
+            animal?.heartRate ??
+            animal?.hr
     );
-}
 
-function getActivity(
-    reading
-) {
-    return getNumber(
-        reading?.activity,
-        reading?.activity_level,
-        reading?.activityLevel
+const getActivity = (animal) =>
+    getNumber(
+        animal?.activity ??
+            animal?.activity_level
     );
-}
 
-function getBattery(
-    reading
-) {
-    return getNumber(
-        reading?.battery,
-        reading?.battery_level,
-        reading?.batteryLevel
+const getBattery = (animal) =>
+    getNumber(
+        animal?.battery ??
+            animal?.battery_level ??
+            animal?.batteryLevel
     );
-}
 
-function getLatitude(
-    reading
-) {
-    return (
-        reading?.latitude ??
-        reading?.lat ??
-        reading?.gps_latitude ??
-        reading?.gps_lat ??
-        reading?.gps?.latitude ??
-        reading?.gps?.lat ??
-        reading?.location?.latitude ??
-        reading?.location?.lat ??
-        reading?.position?.latitude ??
-        reading?.position?.lat
+const getLatitude = (animal) =>
+    getNumber(
+        animal?.latitude ??
+            animal?.lat
     );
-}
 
-function getLongitude(
-    reading
-) {
-    return (
-        reading?.longitude ??
-        reading?.lng ??
-        reading?.lon ??
-        reading?.gps_longitude ??
-        reading?.gps_lng ??
-        reading?.gps_lon ??
-        reading?.gps?.longitude ??
-        reading?.gps?.lng ??
-        reading?.gps?.lon ??
-        reading?.location?.longitude ??
-        reading?.location?.lng ??
-        reading?.location?.lon ??
-        reading?.position?.longitude ??
-        reading?.position?.lng ??
-        reading?.position?.lon
+const getLongitude = (animal) =>
+    getNumber(
+        animal?.longitude ??
+            animal?.lng ??
+            animal?.lon
     );
-}
 
-function getTimestamp(
-    reading
-) {
-    return (
-        reading?.timestamp ??
-        reading?.created_at ??
-        reading?.createdAt ??
-        reading?.recorded_at ??
-        reading?.recordedAt ??
-        reading?.time
-    );
-}
+const getTimestamp = (animal) =>
+    animal?.timestamp ||
+    animal?.recorded_at ||
+    animal?.created_at ||
+    animal?.updated_at ||
+    null;
 
-function getTimestampMs(
-    reading
-) {
-    const timestamp =
-        getTimestamp(
-            reading
-        );
+const getTimestampMs = (animal) => {
+    const timestamp = getTimestamp(animal);
 
     if (!timestamp) {
         return 0;
     }
 
-    const parsed =
-        new Date(
-            timestamp
-        ).getTime();
+    const parsed = new Date(timestamp).getTime();
 
-    return Number.isFinite(
-        parsed
-    )
+    return Number.isFinite(parsed)
         ? parsed
         : 0;
-}
+};
 
-function formatDate(
-    value
-) {
+const formatDate = (value) => {
     if (!value) {
         return "—";
     }
 
-    const date =
-        new Date(value);
+    const date = new Date(value);
 
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-        return String(value);
+    if (Number.isNaN(date.getTime())) {
+        return "—";
     }
 
-    return date.toLocaleString();
-}
+    return date.toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
 
-function getTelemetryAnimalId(
-    reading
-) {
+const getTelemetryAnimalId = (telemetry) => {
+    if (!telemetry) {
+        return undefined;
+    }
+
     return (
-        reading?.animal_id ??
-        reading?.animalId ??
-        reading?.animal?.id ??
-        reading?.tag_id ??
-        reading?.tagId ??
-        null
+        telemetry.animal_id ??
+        telemetry.animalId ??
+        telemetry.id
     );
-}
+};
 
 /* ==========================================================================
-   TELEMETRY MERGE ENGINE
-========================================================================== */
+   TELEMETRY MERGING
+   ========================================================================== */
 
-function mergeLatestTelemetry(
-    existingReadings,
-    incomingReadings
-) {
-    const map = new Map();
+const mergeLatestTelemetry = (
+    existing,
+    incoming
+) => {
+    const combined = [
+        ...(Array.isArray(existing)
+            ? existing
+            : []),
+        ...(Array.isArray(incoming)
+            ? incoming
+            : []),
+    ];
 
-    const existingArray =
-        Array.isArray(
-            existingReadings
-        )
-            ? existingReadings
-            : [];
+    const byAnimal = new Map();
 
-    const incomingArray =
-        Array.isArray(
-            incomingReadings
-        )
-            ? incomingReadings
-            : [];
+    combined.forEach((item) => {
+        const id = getTelemetryAnimalId(item);
 
-    [
-        ...existingArray,
-        ...incomingArray,
-    ].forEach(
-        (reading) => {
-            if (!reading) {
-                return;
-            }
-
-            const animalId =
-                getTelemetryAnimalId(
-                    reading
-                );
-
-            if (
-                animalId ===
-                    undefined ||
-                animalId ===
-                    null
-            ) {
-                return;
-            }
-
-            const key =
-                String(
-                    animalId
-                );
-
-            const existing =
-                map.get(key);
-
-            if (!existing) {
-                map.set(
-                    key,
-                    reading
-                );
-
-                return;
-            }
-
-            const existingTime =
-                getTimestampMs(
-                    existing
-                );
-
-            const incomingTime =
-                getTimestampMs(
-                    reading
-                );
-
-            if (
-                incomingTime >=
-                existingTime
-            ) {
-                map.set(
-                    key,
-                    reading
-                );
-            }
+        if (
+            id === undefined ||
+            id === null
+        ) {
+            return;
         }
-    );
+
+        const current = byAnimal.get(id);
+
+        if (
+            !current ||
+            getTimestampMs(item) >=
+                getTimestampMs(current)
+        ) {
+            byAnimal.set(id, item);
+        }
+    });
 
     return Array.from(
-        map.values()
+        byAnimal.values()
     );
-}
+};
 
-function replaceLatestTelemetry(
-    existingReadings,
-    liveReading
-) {
-    if (!liveReading) {
-        return existingReadings;
-    }
-
-    const animalId =
-        getTelemetryAnimalId(
-            liveReading
-        );
+const replaceLatestTelemetry = (
+    existing,
+    incoming
+) => {
+    const incomingId =
+        getTelemetryAnimalId(incoming);
 
     if (
-        animalId ===
-            undefined ||
-        animalId ===
-            null
+        incomingId === undefined ||
+        incomingId === null
     ) {
-        return existingReadings;
+        return existing;
     }
 
-    const key =
-        String(
-            animalId
-        );
+    const current = Array.isArray(existing)
+        ? [...existing]
+        : [];
 
-    const current =
-        Array.isArray(
-            existingReadings
-        )
-            ? existingReadings
-            : [];
+    const index = current.findIndex(
+        (item) =>
+            String(
+                getTelemetryAnimalId(item)
+            ) === String(incomingId)
+    );
 
-    const existingIndex =
-        current.findIndex(
-            (reading) =>
-                String(
-                    getTelemetryAnimalId(
-                        reading
-                    )
-                ) === key
-        );
-
-    if (
-        existingIndex ===
-        -1
-    ) {
-        return [
-            liveReading,
-            ...current,
-        ];
+    if (index === -1) {
+        current.push(incoming);
+    } else {
+        current[index] = incoming;
     }
 
-    const existing =
-        current[
-            existingIndex
-        ];
-
-    const existingTime =
-        getTimestampMs(
-            existing
-        );
-
-    const incomingTime =
-        getTimestampMs(
-            liveReading
-        );
-
-    if (
-        incomingTime > 0 &&
-        existingTime > 0 &&
-        incomingTime <
-            existingTime
-    ) {
-        return current;
-    }
-
-    const updated =
-        [...current];
-
-    updated[
-        existingIndex
-    ] = liveReading;
-
-    return updated;
-}
+    return current;
+};
 
 /* ==========================================================================
    ALERT HELPERS
-========================================================================== */
+   ========================================================================== */
 
-function getAlertSeverity(
-    alert
-) {
-    const severity =
-        String(
-            alert?.severity ??
-                alert?.level ??
-                alert?.priority ??
-                alert?.status ??
-                "warning"
-        ).toLowerCase();
+const isAlertResolved = (alert) =>
+    Boolean(
+        alert?.resolved ??
+            alert?.is_resolved ??
+            alert?.closed
+    );
+
+const getAlertSeverity = (alert) => {
+    const severity = String(
+        alert?.severity ||
+            alert?.level ||
+            alert?.priority ||
+            "warning"
+    ).toLowerCase();
 
     if (
-        severity.includes(
-            "critical"
-        )
+        severity.includes("critical") ||
+        severity.includes("danger")
     ) {
         return "critical";
     }
 
     if (
-        severity.includes(
-            "warning"
-        ) ||
-        severity.includes(
-            "attention"
-        ) ||
-        severity.includes(
-            "alert"
-        )
+        severity.includes("info") ||
+        severity.includes("normal")
     ) {
-        return "warning";
+        return "info";
     }
 
-    return "healthy";
-}
-
-function isAlertResolved(
-    alert
-) {
-    const status =
-        String(
-            alert?.status ??
-                alert?.state ??
-                alert?.resolution_status ??
-                ""
-        ).toLowerCase();
-
-    return (
-        status.includes(
-            "resolved"
-        ) ||
-        status.includes(
-            "closed"
-        )
-    );
-}
+    return "warning";
+};
 
 /* ==========================================================================
-   HEALTH ENGINE
-========================================================================== */
+   HEALTH
+   ========================================================================== */
 
-function getHealthStatus(
-    reading,
-    animal
-) {
-    const explicitStatus =
-        reading?.health_status ??
-        reading?.healthStatus ??
-        reading?.status ??
-        animal?.health_status ??
-        animal?.healthStatus ??
-        animal?.status;
-
-    if (explicitStatus) {
-        const normalized =
-            String(
-                explicitStatus
-            ).toLowerCase();
-
-        if (
-            normalized.includes(
-                "critical"
-            )
-        ) {
-            return "critical";
-        }
-
-        if (
-            normalized.includes(
-                "warning"
-            ) ||
-            normalized.includes(
-                "attention"
-            ) ||
-            normalized.includes(
-                "alert"
-            )
-        ) {
-            return "warning";
-        }
-
-        if (
-            normalized.includes(
-                "healthy"
-            ) ||
-            normalized.includes(
-                "normal"
-            )
-        ) {
-            return "healthy";
-        }
-    }
-
-    if (!reading) {
-        return "healthy";
-    }
+const getHealthStatus = (
+    animal,
+    telemetry
+) => {
+    const source = {
+        ...(animal || {}),
+        ...(telemetry || {}),
+    };
 
     const temperature =
-        getTemperature(
-            reading
-        );
+        getTemperature(source);
 
     const heartRate =
-        getHeartRate(
-            reading
-        );
+        getHeartRate(source);
 
     const activity =
-        getActivity(
-            reading
-        );
+        getActivity(source);
+
+    const battery =
+        getBattery(source);
 
     if (
-        temperature >= 41 ||
-        heartRate >= 140 ||
-        (
-            activity > 0 &&
-            activity <= 10
-        )
+        temperature !== null &&
+        temperature >= 41
     ) {
         return "critical";
     }
 
     if (
-        temperature >= 40 ||
-        heartRate >= 120 ||
-        (
-            activity > 0 &&
-            activity <= 25
-        )
+        heartRate !== null &&
+        heartRate >= 140
+    ) {
+        return "critical";
+    }
+
+    if (
+        activity !== null &&
+        activity <= 10
+    ) {
+        return "critical";
+    }
+
+    if (
+        battery !== null &&
+        battery <= 20
+    ) {
+        return "critical";
+    }
+
+    if (
+        temperature !== null &&
+        temperature >= 39.5
+    ) {
+        return "warning";
+    }
+
+    if (
+        heartRate !== null &&
+        heartRate >= 120
+    ) {
+        return "warning";
+    }
+
+    if (
+        activity !== null &&
+        activity <= 25
+    ) {
+        return "warning";
+    }
+
+    if (
+        battery !== null &&
+        battery <= 35
     ) {
         return "warning";
     }
 
     return "healthy";
-}
+};
+
+const getInitials = (name) => {
+    if (!name) {
+        return "AN";
+    }
+
+    return name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) =>
+            part.charAt(0).toUpperCase()
+        )
+        .join("");
+};
 
 /* ==========================================================================
-   MAIN DASHBOARD
-========================================================================== */
+   COMPONENT
+   ========================================================================== */
 
 export default function Dashboard() {
-    const navigate =
-        useNavigate();
+    const navigate = useNavigate();
+    const location = useLocation();
 
-    /* ======================================================================
-       STATE
-    ====================================================================== */
+    const userRole =
+        localStorage.getItem("user_role") ||
+        "";
 
-    const [
-        dashboard,
-        setDashboard,
-    ] = useState(null);
+    const isFarmer =
+        userRole.toLowerCase() === "farmer";
 
-    const [
-        animals,
-        setAnimals,
-    ] = useState([]);
+    const [dashboard, setDashboard] =
+        useState(null);
 
-    const [
-        telemetry,
-        setTelemetry,
-    ] = useState([]);
+    const [animals, setAnimals] =
+        useState([]);
 
-    const [
-        alerts,
-        setAlerts,
-    ] = useState([]);
+    const [telemetry, setTelemetry] =
+        useState([]);
 
-    const [
-        loading,
-        setLoading,
-    ] = useState(true);
+    const [alerts, setAlerts] =
+        useState([]);
 
-    const [
-        refreshing,
-        setRefreshing,
-    ] = useState(false);
+    const [farms, setFarms] =
+        useState([]);
 
-    const [
-        apiOnline,
-        setApiOnline,
-    ] = useState(false);
+    const [loading, setLoading] =
+        useState(true);
 
-    const [
-        error,
-        setError,
-    ] = useState("");
+    const [refreshing, setRefreshing] =
+        useState(false);
+
+    const [apiOnline, setApiOnline] =
+        useState(false);
+
+    const [error, setError] =
+        useState("");
 
     const mapSectionRef =
         useRef(null);
@@ -672,23 +415,16 @@ export default function Dashboard() {
     const dashboardRequestRef =
         useRef(0);
 
-    /* ======================================================================
+    /* ----------------------------------------------------------------------
        LIVE TELEMETRY
-    ====================================================================== */
+       ---------------------------------------------------------------------- */
 
     const handleLiveTelemetry =
         useCallback(
             (liveTelemetry) => {
-                if (
-                    !liveTelemetry
-                ) {
+                if (!liveTelemetry) {
                     return;
                 }
-
-                console.log(
-                    "📡 Dashboard live telemetry:",
-                    liveTelemetry
-                );
 
                 const incomingAnimalId =
                     getTelemetryAnimalId(
@@ -698,95 +434,71 @@ export default function Dashboard() {
                 if (
                     incomingAnimalId ===
                         undefined ||
-                    incomingAnimalId ===
-                        null
+                    incomingAnimalId === null
                 ) {
                     return;
                 }
 
-                setTelemetry(
-                    (current) => {
-                        const updated =
-                            replaceLatestTelemetry(
-                                current,
-                                liveTelemetry
-                            );
+                setTelemetry((current) => {
+                    const updated =
+                        replaceLatestTelemetry(
+                            current,
+                            liveTelemetry
+                        );
 
-                        telemetryRef.current =
-                            updated;
+                    telemetryRef.current =
+                        updated;
 
-                        return updated;
-                    }
-                );
+                    return updated;
+                });
 
-                setApiOnline(
-                    true
-                );
-
+                setApiOnline(true);
                 setError("");
             },
             []
         );
 
     const {
-        connected:
-            websocketConnected,
-    } =
-        useTelemetrySocket(
-            handleLiveTelemetry
-        );
+        connected: websocketConnected,
+    } = useTelemetrySocket(
+        handleLiveTelemetry
+    );
 
-    /* ======================================================================
+    /* ----------------------------------------------------------------------
        LOAD DASHBOARD
-    ====================================================================== */
+       ---------------------------------------------------------------------- */
 
     const loadDashboard =
         useCallback(
-            async (
-                manualRefresh = false
-            ) => {
+            async (manualRefresh = false) => {
                 const requestId =
                     ++dashboardRequestRef.current;
 
-                if (
-                    manualRefresh
-                ) {
-                    setRefreshing(
-                        true
-                    );
+                if (manualRefresh) {
+                    setRefreshing(true);
                 } else {
-                    setLoading(
-                        true
-                    );
+                    setLoading(true);
                 }
 
                 setError("");
 
                 try {
-                    const [
-                        dashboardResponse,
-                        animalsResponse,
-                        telemetryResponse,
-                        alertsResponse,
-                    ] =
+                    const requests = [
+                        api.get("/dashboard/"),
+                        api.get("/animals/"),
+                        api.get("/telemetry/"),
+                        api.get("/alerts/"),
+                    ];
+
+                    if (isFarmer) {
+                        requests.push(
+                            api.get("/farms/")
+                        );
+                    }
+
+                    const responses =
                         await Promise.all(
-                            [
-                                api.get(
-                                    "/dashboard/"
-                                ),
-
-                                api.get(
-                                    "/animals/"
-                                ),
-
-                                api.get(
-                                    "/telemetry/"
-                                ),
-
-                                api.get(
-                                    "/alerts/"
-                                ),
-                            ]
+                            requests
                         );
 
                     if (
@@ -795,6 +507,14 @@ export default function Dashboard() {
                     ) {
                         return;
                     }
+
+                    const [
+                        dashboardResponse,
+                        animalsResponse,
+                        telemetryResponse,
+                        alertsResponse,
+                        farmsResponse,
+                    ] = responses;
 
                     const dashboardData =
                         dashboardResponse?.data ||
@@ -830,6 +550,19 @@ export default function Dashboard() {
                                   ?.items ||
                               [];
 
+                    const farmData =
+                        isFarmer &&
+                        farmsResponse
+                            ? Array.isArray(
+                                  farmsResponse?.data
+                              )
+                                ? farmsResponse.data
+                                : farmsResponse
+                                      ?.data
+                                      ?.items ||
+                                  []
+                            : [];
+
                     const mergedTelemetry =
                         mergeLatestTelemetry(
                             telemetryRef.current,
@@ -851,16 +584,16 @@ export default function Dashboard() {
                         mergedTelemetry
                     );
 
-                    setAlerts(
-                        alertData
-                    );
+                    setAlerts(alertData);
 
-                    setApiOnline(
-                        true
-                    );
-                } catch (
-                    err
-                ) {
+                    if (isFarmer) {
+                        setFarms(
+                            farmData
+                        );
+                    }
+
+                    setApiOnline(true);
+                } catch (err) {
                     console.error(
                         "Dashboard loading error:",
                         err
@@ -868,8 +601,7 @@ export default function Dashboard() {
 
                     if (
                         err?.response
-                            ?.status ===
-                        401
+                            ?.status === 401
                     ) {
                         localStorage.removeItem(
                             "access_token"
@@ -879,80 +611,114 @@ export default function Dashboard() {
                             "token"
                         );
 
+                        localStorage.removeItem(
+                            "user_role"
+                        );
+
+                        localStorage.removeItem(
+                            "herdsense_user"
+                        );
+
                         navigate(
                             "/login",
                             {
-                                replace:
-                                    true,
+                                replace: true,
                             }
                         );
 
                         return;
                     }
 
-                    setApiOnline(
-                        false
-                    );
+                    setApiOnline(false);
 
                     setError(
                         "Unable to load live dashboard data. Check that the API is running."
                     );
                 } finally {
-                    setLoading(
-                        false
-                    );
-
-                    setRefreshing(
-                        false
-                    );
+                    setLoading(false);
+                    setRefreshing(false);
                 }
             },
-            [navigate]
+            [isFarmer, navigate]
         );
 
-    /* ======================================================================
+    /* ----------------------------------------------------------------------
        INITIAL LOAD
-    ====================================================================== */
+       ---------------------------------------------------------------------- */
 
     useEffect(() => {
-        loadDashboard(
-            false
-        );
+        loadDashboard(false);
 
         const interval =
-            setInterval(
-                () => {
-                    loadDashboard(
-                        true
-                    );
-                },
-                REFRESH_INTERVAL
-            );
+            setInterval(() => {
+                loadDashboard(true);
+            }, REFRESH_INTERVAL);
 
         return () => {
-            clearInterval(
-                interval
-            );
+            clearInterval(interval);
         };
+    }, [loadDashboard]);
+
+    /* ----------------------------------------------------------------------
+       FARM REGISTRATION SUCCESS
+       ---------------------------------------------------------------------- */
+
+    useEffect(() => {
+        if (
+            location.state
+                ?.farmRegistered
+        ) {
+            loadDashboard(true);
+
+            navigate(
+                location.pathname,
+                {
+                    replace: true,
+                    state: {},
+                }
+            );
+        }
     }, [
+        location.pathname,
+        location.state,
         loadDashboard,
+        navigate,
     ]);
 
-    /* ======================================================================
-       REGISTERED ANIMAL MAP
-    ====================================================================== */
+    /* ==========================================================================
+       DERIVED DATA
+       ========================================================================== */
 
-    const animalMap =
-        useMemo(() => {
-            const map =
-                new Map();
+    const animalMap = useMemo(() => {
+        const map = new Map();
 
-            animals.forEach(
-                (animal) => {
+        animals.forEach((animal) => {
+            const id =
+                getAnimalId(animal);
+
+            if (
+                id !== undefined &&
+                id !== null
+            ) {
+                map.set(
+                    String(id),
+                    animal
+                );
+            }
+        });
+
+        return map;
+    }, [animals]);
+
+    const latestTelemetry = useMemo(
+        () => {
+            const map = new Map();
+
+            telemetry.forEach(
+                (item) => {
                     const id =
-                        getAnimalId(
-                            animal,
-                            null
+                        getTelemetryAnimalId(
+                            item
                         );
 
                     if (
@@ -961,246 +727,136 @@ export default function Dashboard() {
                         id !== null
                     ) {
                         map.set(
-                            String(
-                                id
-                            ),
-                            animal
+                            String(id),
+                            item
                         );
                     }
                 }
             );
 
             return map;
-        }, [
-            animals,
-        ]);
+        },
+        [telemetry]
+    );
 
-    /* ======================================================================
-       LATEST TELEMETRY PER ANIMAL
-    ====================================================================== */
-
-    const latestTelemetry =
-        useMemo(() => {
-            const map =
-                new Map();
-
-            telemetry.forEach(
-                (reading) => {
-                    const animalId =
-                        getTelemetryAnimalId(
-                            reading
-                        );
-
-                    if (
-                        animalId ===
-                            undefined ||
-                        animalId ===
-                            null
-                    ) {
-                        return;
-                    }
-
-                    const key =
-                        String(
-                            animalId
-                        );
-
-                    const existing =
-                        map.get(
-                            key
-                        );
-
-                    if (
-                        !existing
-                    ) {
-                        map.set(
-                            key,
-                            reading
-                        );
-
-                        return;
-                    }
-
-                    const currentTime =
-                        getTimestampMs(
-                            reading
-                        );
-
-                    const existingTime =
-                        getTimestampMs(
-                            existing
-                        );
-
-                    if (
-                        currentTime >=
-                        existingTime
-                    ) {
-                        map.set(
-                            key,
-                            reading
-                        );
-                    }
-                }
-            );
-
-            return map;
-        }, [
-            telemetry,
-        ]);
-
-    /* ======================================================================
-       AUTHORITATIVE ANIMAL ROWS
-    ====================================================================== */
-
-    const animalRows =
-        useMemo(() => {
-            return Array.from(
-                animalMap.entries()
-            ).map(
-                ([
-                    animalId,
-                    animal,
-                ]) => ({
-                    animal,
-                    reading:
-                        latestTelemetry.get(
-                            String(
-                                animalId
-                            )
-                        ) ||
-                        null,
-                })
-            );
-        }, [
-            animalMap,
-            latestTelemetry,
-        ]);
-
-    /* ======================================================================
-       MAP ANIMAL DATA
-    ====================================================================== */
-
-    const mapAnimals =
-        useMemo(() => {
-            return animalRows.map(
-                ({
-                    animal,
-                    reading,
-                }) => ({
-                    ...animal,
-
-                    animal_id:
+    const animalRows = useMemo(
+        () =>
+            animals.map(
+                (animal) => {
+                    const id =
                         getAnimalId(
-                            animal,
-                            reading
-                        ),
-
-                    animal_name:
-                        getAnimalName(
-                            animal,
-                            reading
-                        ),
-
-                    latitude:
-                        getLatitude(
-                            reading
-                        ) ??
-                        getLatitude(
                             animal
-                        ),
+                        );
 
-                    longitude:
-                        getLongitude(
-                            reading
-                        ) ??
-                        getLongitude(
+                    const live =
+                        latestTelemetry.get(
+                            String(id)
+                        );
+
+                    const source = {
+                        ...animal,
+                        ...(live || {}),
+                    };
+
+                    return {
+                        animal,
+                        telemetry:
+                            live,
+                        id,
+                        name:
+                            getAnimalName(
+                                animal
+                            ),
+                        temperature:
+                            getTemperature(
+                                source
+                            ),
+                        heartRate:
+                            getHeartRate(
+                                source
+                            ),
+                        activity:
+                            getActivity(
+                                source
+                            ),
+                        battery:
+                            getBattery(
+                                source
+                            ),
+                        timestamp:
+                            getTimestamp(
+                                source
+                            ),
+                        health:
+                            getHealthStatus(
+                                animal,
+                                live
+                            ),
+                    };
+                }
+            ),
+        [
+            animals,
+            latestTelemetry,
+        ]
+    );
+
+    const mapAnimals = useMemo(
+        () =>
+            animals
+                .map((animal) => {
+                    const id =
+                        getAnimalId(
                             animal
-                        ),
+                        );
 
-                    temperature:
-                        getTemperature(
-                            reading
-                        ),
+                    const live =
+                        latestTelemetry.get(
+                            String(id)
+                        );
 
-                    heart_rate:
-                        getHeartRate(
-                            reading
-                        ),
-
-                    activity:
-                        getActivity(
-                            reading
-                        ),
-
-                    health_status:
-                        getHealthStatus(
-                            reading,
-                            animal
-                        ),
+                    return {
+                        ...animal,
+                        ...(live || {}),
+                    };
                 })
-            );
-        }, [
-            animalRows,
-        ]);
-
-    /* ======================================================================
-       HEALTH SUMMARY
-    ====================================================================== */
+                .filter(
+                    (animal) =>
+                        getLatitude(
+                            animal
+                        ) !== null &&
+                        getLongitude(
+                            animal
+                        ) !== null
+                ),
+        [
+            animals,
+            latestTelemetry,
+        ]
+    );
 
     const computedHealth =
         useMemo(() => {
-            let healthy = 0;
-
-            let warning = 0;
-
-            let critical = 0;
+            const result = {
+                healthy: 0,
+                warning: 0,
+                critical: 0,
+            };
 
             animalRows.forEach(
-                ({
-                    animal,
-                    reading,
-                }) => {
-                    const status =
-                        getHealthStatus(
-                            reading,
-                            animal
-                        );
-
-                    if (
-                        status ===
-                        "critical"
-                    ) {
-                        critical +=
-                            1;
-                    } else if (
-                        status ===
-                        "warning"
-                    ) {
-                        warning +=
-                            1;
-                    } else {
-                        healthy +=
-                            1;
-                    }
+                (row) => {
+                    result[row.health] =
+                        (result[
+                            row.health
+                        ] || 0) + 1;
                 }
             );
 
-            return {
-                total:
-                    animalRows.length,
-
-                healthy,
-
-                warning,
-
-                critical,
-            };
-        }, [
-            animalRows,
-        ]);
+            return result;
+        }, [animalRows]);
 
     const registeredAnimals =
-        computedHealth.total;
+        animals.length;
 
     const healthyAnimals =
         computedHealth.healthy;
@@ -1211,17 +867,15 @@ export default function Dashboard() {
     const criticalAnimals =
         computedHealth.critical;
 
-    /* ======================================================================
-       HEALTH PERCENTAGES
-    ====================================================================== */
+    const needsAttention =
+        warningAnimals +
+        criticalAnimals;
 
     const healthyPercentage =
         registeredAnimals > 0
             ? Math.round(
-                  (
-                      healthyAnimals /
-                      registeredAnimals
-                  ) *
+                  (healthyAnimals /
+                      registeredAnimals) *
                       100
               )
             : 0;
@@ -1229,10 +883,8 @@ export default function Dashboard() {
     const warningPercentage =
         registeredAnimals > 0
             ? Math.round(
-                  (
-                      warningAnimals /
-                      registeredAnimals
-                  ) *
+                  (warningAnimals /
+                      registeredAnimals) *
                       100
               )
             : 0;
@@ -1240,327 +892,190 @@ export default function Dashboard() {
     const criticalPercentage =
         registeredAnimals > 0
             ? Math.round(
-                  (
-                      criticalAnimals /
-                      registeredAnimals
-                  ) *
+                  (criticalAnimals /
+                      registeredAnimals) *
                       100
               )
             : 0;
-
-    /* ======================================================================
-       AVERAGE TEMPERATURE
-    ====================================================================== */
 
     const averageTemperature =
         useMemo(() => {
             const values =
                 animalRows
                     .map(
-                        ({
-                            reading,
-                        }) =>
-                            getTemperature(
-                                reading
-                            )
+                        (row) =>
+                            row.temperature
                     )
                     .filter(
                         (value) =>
-                            value > 0
+                            value !==
+                                null &&
+                            Number.isFinite(
+                                value
+                            )
                     );
 
-            if (
-                values.length ===
-                0
-            ) {
-                return getNumber(
-                    dashboard?.average_temperature,
-                    dashboard?.averageTemperature
-                );
+            if (!values.length) {
+                return null;
             }
 
             return (
                 values.reduce(
-                    (
-                        sum,
-                        value
-                    ) =>
-                        sum +
-                        value,
+                    (sum, value) =>
+                        sum + value,
                     0
-                ) /
-                values.length
+                ) / values.length
             );
-        }, [
-            animalRows,
-            dashboard,
-        ]);
-
-    /* ======================================================================
-       ALERT INTELLIGENCE
-    ====================================================================== */
+        }, [animalRows]);
 
     const unresolvedAlerts =
-        useMemo(() => {
-            return alerts
-                .filter(
-                    (alert) =>
-                        !isAlertResolved(
-                            alert
-                        )
+        alerts.filter(
+            (alert) =>
+                !isAlertResolved(
+                    alert
                 )
-                .sort(
-                    (
-                        a,
-                        b
-                    ) => {
-                        const severityRank =
-                            {
-                                critical:
-                                    3,
-
-                                warning:
-                                    2,
-
-                                healthy:
-                                    1,
-                            };
-
-                        const aRank =
-                            severityRank[
-                                getAlertSeverity(
-                                    a
-                                )
-                            ] || 0;
-
-                        const bRank =
-                            severityRank[
-                                getAlertSeverity(
-                                    b
-                                )
-                            ] || 0;
-
-                        if (
-                            bRank !==
-                            aRank
-                        ) {
-                            return (
-                                bRank -
-                                aRank
-                            );
-                        }
-
-                        const aTime =
-                            new Date(
-                                a?.timestamp ??
-                                    a?.created_at ??
-                                    a?.createdAt ??
-                                    0
-                            ).getTime();
-
-                        const bTime =
-                            new Date(
-                                b?.timestamp ??
-                                    b?.created_at ??
-                                    b?.createdAt ??
-                                    0
-                            ).getTime();
-
-                        return (
-                            bTime -
-                            aTime
-                        );
-                    }
-                );
-        }, [
-            alerts,
-        ]);
+        );
 
     const criticalAlerts =
-        useMemo(() => {
-            return unresolvedAlerts.filter(
-                (alert) =>
-                    getAlertSeverity(
-                        alert
-                    ) ===
-                    "critical"
-            );
-        }, [
-            unresolvedAlerts,
-        ]);
+        unresolvedAlerts.filter(
+            (alert) =>
+                getAlertSeverity(
+                    alert
+                ) === "critical"
+        );
 
-    /* ======================================================================
-       HEALTH RING
-    ====================================================================== */
-
-    const ringBackground =
-        useMemo(() => {
-            if (
-                registeredAnimals ===
-                0
-            ) {
-                return "conic-gradient(#27272a 0deg 360deg)";
-            }
-
-            const healthyDegrees =
-                healthyPercentage *
-                3.6;
-
-            const warningDegrees =
-                warningPercentage *
-                3.6;
-
-            return `
-                conic-gradient(
-                    #32d74b
-                    0deg
-                    ${healthyDegrees}deg,
-
-                    #f5b83d
-                    ${healthyDegrees}deg
-                    ${
-                        healthyDegrees +
-                        warningDegrees
-                    }deg,
-
-                    #ff453a
-                    ${
-                        healthyDegrees +
-                        warningDegrees
-                    }deg
-                    360deg
-                )
-            `;
-        }, [
-            registeredAnimals,
-            healthyPercentage,
-            warningPercentage,
-        ]);
-
-    /* ======================================================================
-       TEMPERATURE POSITION
-    ====================================================================== */
+    const ringBackground = `conic-gradient(
+        #38d996 0deg ${healthyPercentage * 3.6}deg,
+        #ffb65c ${healthyPercentage * 3.6}deg ${
+        (healthyPercentage +
+            warningPercentage) *
+        3.6
+    }deg,
+        #ff5e6c ${
+            (healthyPercentage +
+                warningPercentage) *
+            3.6
+        }deg 360deg
+    )`;
 
     const temperaturePosition =
-        useMemo(() => {
-            const percentage =
-                (
-                    (
-                        averageTemperature -
-                        37
-                    ) /
-                    6
-                ) *
-                100;
+        averageTemperature ===
+        null
+            ? 0
+            : Math.min(
+                  100,
+                  Math.max(
+                      0,
+                      ((averageTemperature -
+                          35) /
+                          8) *
+                          100
+                  )
+              );
 
-            return Math.min(
-                100,
-                Math.max(
-                    0,
-                    percentage
-                )
-            );
-        }, [
-            averageTemperature,
-        ]);
-
-    /* ======================================================================
-       MAP NAVIGATION
-    ====================================================================== */
+    const temperatureStatus =
+        averageTemperature === null
+            ? "No signal"
+            : averageTemperature >= 41
+            ? "Critical"
+            : averageTemperature >= 39.5
+            ? "Elevated"
+            : "Within range";
 
     const scrollToMap =
         useCallback(() => {
             mapSectionRef.current?.scrollIntoView(
                 {
-                    behavior:
-                        "smooth",
-
-                    block:
-                        "start",
+                    behavior: "smooth",
+                    block: "start",
                 }
             );
         }, []);
 
-    /* ======================================================================
+    /* ==========================================================================
        RENDER
-    ====================================================================== */
+       ========================================================================== */
 
     return (
         <AppShell>
-
             <div className="hs-dashboard">
+                {/* ================================================================
+                    COMMAND BAR
+                   ================================================================ */}
 
-                {/* =========================================================
-                    TOP BAR
-                ========================================================= */}
-
-                <div className="hs-dashboard-topbar">
-
-                    <div>
-
-                        <div className="hs-breadcrumb">
-
+                <header className="hs-dashboard-topbar">
+                    <div className="hs-dashboard-title">
+                        <span className="hs-dashboard-eyebrow">
                             COMMAND CENTER
+                        </span>
 
-                            <span>
-                                /
-                            </span>
-
-                            <strong>
-                                Overview
-                            </strong>
-
-                        </div>
-
+                        <span className="hs-dashboard-page-title">
+                            Overview
+                        </span>
                     </div>
 
-                    <div className="hs-top-actions">
+                    <div className="hs-dashboard-actions">
+                        {isFarmer && (
+                            <button
+                                className="hs-action-button hs-action-button-primary"
+                                type="button"
+                                onClick={() =>
+                                    navigate(
+                                        "/farms/register"
+                                    )
+                                }
+                            >
+                                <span>+</span>
+                                Register Farm
+                            </button>
+                        )}
 
                         <button
-                            className="hs-action-button hs-map-action-button"
+                            className="hs-action-button"
                             type="button"
                             onClick={
                                 scrollToMap
                             }
                         >
-                            ◎{" "}
                             Live Map
                         </button>
 
-                        <span className="hs-status-pill">
-
+                        <div className="hs-system-status">
                             <span
                                 className={`hs-status-dot ${
                                     apiOnline
-                                        ? "green"
-                                        : "red"
+                                        ? "online"
+                                        : "offline"
                                 }`}
                             />
 
-                            {apiOnline
-                                ? "API operational"
-                                : "API offline"}
+                            <span>
+                                API{" "}
+                                {apiOnline
+                                    ? "Online"
+                                    : "Offline"}
+                            </span>
+                        </div>
 
-                        </span>
-
-                        <span className="hs-status-pill">
-
+                        <div className="hs-system-status">
                             <span
                                 className={`hs-status-dot ${
                                     websocketConnected
-                                        ? "green"
-                                        : "red"
+                                        ? "online"
+                                        : "offline"
                                 }`}
                             />
 
-                            {websocketConnected
-                                ? "Live monitoring"
-                                : "Reconnecting"}
-
-                        </span>
+                            <span>
+                                WS{" "}
+                                {websocketConnected
+                                    ? "Live"
+                                    : "Standby"}
+                            </span>
+                        </div>
 
                         <button
-                            className="hs-action-button"
+                            className="hs-refresh-button"
                             type="button"
                             onClick={() =>
                                 loadDashboard(
@@ -1570,32 +1085,34 @@ export default function Dashboard() {
                             disabled={
                                 refreshing
                             }
+                            aria-label="Refresh dashboard"
+                            title="Refresh dashboard"
                         >
-                            ↻{" "}
-                            {refreshing
-                                ? "Refreshing"
-                                : "Refresh"}
+                            <span
+                                className={
+                                    refreshing
+                                        ? "hs-refresh-icon spinning"
+                                        : "hs-refresh-icon"
+                                }
+                            >
+                                ↻
+                            </span>
                         </button>
-
                     </div>
+                </header>
 
-                </div>
-
-                {/* =========================================================
-                    MAIN
-                ========================================================= */}
+                {/* ================================================================
+                    CONTENT
+                   ================================================================ */}
 
                 <main className="hs-dashboard-content">
-
                     {/* HERO */}
 
                     <section className="hs-dashboard-hero">
-
-                        <div>
-
-                            <div className="hs-section-label">
-                                COMMAND CENTER
-                            </div>
+                        <div className="hs-dashboard-hero-main">
+                            <span className="hs-section-kicker">
+                                LIVE OPERATIONS
+                            </span>
 
                             <h1>
                                 Herd intelligence,
@@ -1604,204 +1121,442 @@ export default function Dashboard() {
                             </h1>
 
                             <p>
-                                Real-time livestock
-                                monitoring, health
-                                signals and
-                                operational
-                                intelligence in one
-                                place.
+                                Monitor animal health,
+                                telemetry, location and
+                                operational risk from one
+                                control surface.
                             </p>
-
                         </div>
 
-                        <div className="hs-live-indicator">
+                        <div className="hs-dashboard-hero-meta">
+                            <div>
+                                <span>
+                                    LAST SYNCHRONIZED
+                                </span>
 
-                            <span
-                                className={`hs-status-dot ${
-                                    websocketConnected
-                                        ? "green"
-                                        : "red"
-                                }`}
-                            />
+                                <strong>
+                                    {dashboard
+                                        ?.updated_at
+                                        ? formatDate(
+                                              dashboard.updated_at
+                                          )
+                                        : apiOnline
+                                        ? "Live"
+                                        : "Awaiting data"}
+                                </strong>
+                            </div>
 
-                            {websocketConnected
-                                ? "LIVE · Sensor network"
-                                : "RECONNECTING · Sensor network"}
+                            <div>
+                                <span>
+                                    TELEMETRY STREAM
+                                </span>
 
+                                <strong>
+                                    <i
+                                        className={`hs-meta-indicator ${
+                                            websocketConnected
+                                                ? "active"
+                                                : ""
+                                        }`}
+                                    />
+
+                                    {websocketConnected
+                                        ? "Connected"
+                                        : "Standby"}
+                                </strong>
+                            </div>
                         </div>
-
                     </section>
 
                     {/* ERROR */}
 
                     {error && (
                         <div className="hs-dashboard-error">
-
-                            <strong>
-                                Connection issue
-                            </strong>
-
-                            <span>
-                                {error}
-                            </span>
-
-                        </div>
-                    )}
-
-                    {/* =====================================================
-                        KPI GRID
-                    ===================================================== */}
-
-                    <section className="hs-kpi-grid">
-
-                        <div className="hs-kpi-card">
-
-                            <div className="hs-kpi-label">
-                                REGISTERED ANIMALS
-                            </div>
-
-                            <div className="hs-kpi-value">
-                                {loading
-                                    ? "—"
-                                    : registeredAnimals}
-                            </div>
-
-                            <div className="hs-kpi-description">
-                                Animals currently
-                                monitored
-                            </div>
-
-                            <div className="hs-kpi-icon neutral">
-                                ◉
-                            </div>
-
-                        </div>
-
-                        <div className="hs-kpi-card">
-
-                            <div className="hs-kpi-label">
-                                HEALTHY
-                            </div>
-
-                            <div className="hs-kpi-value">
-                                {loading
-                                    ? "—"
-                                    : healthyAnimals}
-                            </div>
-
-                            <div className="hs-kpi-description">
-                                Within normal
-                                health range
-                            </div>
-
-                            <div className="hs-kpi-icon healthy">
-                                ✓
-                            </div>
-
-                        </div>
-
-                        <div className="hs-kpi-card">
-
-                            <div className="hs-kpi-label">
-                                NEEDS ATTENTION
-                            </div>
-
-                            <div className="hs-kpi-value">
-                                {loading
-                                    ? "—"
-                                    : warningAnimals +
-                                      criticalAnimals}
-                            </div>
-
-                            <div className="hs-kpi-description">
-                                Warning or critical
-                                condition
-                            </div>
-
-                            <div className="hs-kpi-icon warning">
+                            <div className="hs-error-icon">
                                 !
                             </div>
 
-                        </div>
+                            <div className="hs-error-content">
+                                <strong>
+                                    Data connection
+                                    issue
+                                </strong>
 
-                        <div
+                                <span>
+                                    {error}
+                                </span>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    loadDashboard(
+                                        true
+                                    )
+                                }
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    )}
+
+                    {/* ============================================================
+                        FARM OPERATIONS
+                       ============================================================ */}
+
+                    {isFarmer && (
+                        <section className="hs-farm-operations">
+                            <div className="hs-section-heading">
+                                <div>
+                                    <span className="hs-section-kicker">
+                                        FARM OPERATIONS
+                                    </span>
+
+                                    <h2>
+                                        {farms.length ===
+                                        0
+                                            ? "Set up your farm"
+                                            : "Your farms"}
+                                    </h2>
+
+                                    <p>
+                                        {farms.length ===
+                                        0
+                                            ? "Register a farm to begin building your livestock intelligence workspace."
+                                            : `${farms.length} farm${
+                                                  farms.length ===
+                                                  1
+                                                      ? ""
+                                                      : "s"
+                                              } connected to your account.`}
+                                    </p>
+                                </div>
+
+                                <button
+                                    className="hs-farm-primary-action"
+                                    type="button"
+                                    onClick={() =>
+                                        navigate(
+                                            "/farms/register"
+                                        )
+                                    }
+                                >
+                                    <span>+</span>
+
+                                    {farms.length ===
+                                    0
+                                        ? "Register Farm"
+                                        : "Add Farm"}
+                                </button>
+                            </div>
+
+                            {farms.length ===
+                            0 ? (
+                                <div className="hs-farm-empty-state">
+                                    <div className="hs-farm-empty-icon">
+                                        ⌂
+                                    </div>
+
+                                    <div className="hs-farm-empty-copy">
+                                        <strong>
+                                            No farm
+                                            registered
+                                        </strong>
+
+                                        <span>
+                                            Your farm
+                                            becomes the
+                                            foundation
+                                            for animal
+                                            records,
+                                            telemetry
+                                            and health
+                                            intelligence.
+                                        </span>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            navigate(
+                                                "/farms/register"
+                                            )
+                                        }
+                                    >
+                                        Start registration
+                                        <span>→</span>
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="hs-farm-list">
+                                    {farms.map(
+                                        (
+                                            farm
+                                        ) => (
+                                            <article
+                                                className="hs-farm-card"
+                                                key={
+                                                    farm.id
+                                                }
+                                            >
+                                                <div className="hs-farm-card-top">
+                                                    <div className="hs-farm-identity">
+                                                        <div className="hs-farm-avatar">
+                                                            {getInitials(
+                                                                farm.name
+                                                            )}
+                                                        </div>
+
+                                                        <div>
+                                                            <strong>
+                                                                {
+                                                                    farm.name
+                                                                }
+                                                            </strong>
+
+                                                            <span>
+                                                                {
+                                                                    farm.location
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <span className="hs-farm-status">
+                                                        <i />
+                                                        ACTIVE
+                                                    </span>
+                                                </div>
+
+                                                <div className="hs-farm-card-bottom">
+                                                    <div className="hs-farm-coordinates">
+                                                        <div>
+                                                            <span>
+                                                                LATITUDE
+                                                            </span>
+
+                                                            <strong>
+                                                                {getNumber(
+                                                                    farm.latitude
+                                                                )?.toFixed(
+                                                                    5
+                                                                ) ||
+                                                                    "—"}
+                                                            </strong>
+                                                        </div>
+
+                                                        <div>
+                                                            <span>
+                                                                LONGITUDE
+                                                            </span>
+
+                                                            <strong>
+                                                                {getNumber(
+                                                                    farm.longitude
+                                                                )?.toFixed(
+                                                                    5
+                                                                ) ||
+                                                                    "—"}
+                                                            </strong>
+                                                        </div>
+                                                    </div>
+
+                                                    <button
+                                                        className="hs-farm-secondary-action"
+                                                        type="button"
+                                                        onClick={() =>
+                                                            navigate(
+                                                                "/animals/register",
+                                                                {
+                                                                    state: {
+                                                                        farmId:
+                                                                            farm.id,
+                                                                        farmName:
+                                                                            farm.name,
+                                                                    },
+                                                                }
+                                                            )
+                                                        }
+                                                    >
+                                                        + Add Animal
+                                                    </button>
+                                                </div>
+                                            </article>
+                                        )
+                                    )}
+                                </div>
+                            )}
+                        </section>
+                    )}
+
+                    {/* ============================================================
+                        KPI GRID
+                       ============================================================ */}
+
+                    <section className="hs-kpi-grid">
+                        <article className="hs-kpi-card">
+                            <div className="hs-kpi-top">
+                                <span className="hs-kpi-label">
+                                    REGISTERED ANIMALS
+                                </span>
+
+                                <span className="hs-kpi-symbol">
+                                    ◉
+                                </span>
+                            </div>
+
+                            <strong className="hs-kpi-value">
+                                {loading
+                                    ? "—"
+                                    : registeredAnimals}
+                            </strong>
+
+                            <div className="hs-kpi-foot">
+                                <span className="hs-kpi-neutral">
+                                    LIVE INVENTORY
+                                </span>
+
+                                <span>
+                                    Animal identities
+                                </span>
+                            </div>
+                        </article>
+
+                        <article className="hs-kpi-card">
+                            <div className="hs-kpi-top">
+                                <span className="hs-kpi-label">
+                                    HEALTHY
+                                </span>
+
+                                <span className="hs-kpi-symbol healthy">
+                                    ✓
+                                </span>
+                            </div>
+
+                            <strong className="hs-kpi-value">
+                                {loading
+                                    ? "—"
+                                    : healthyAnimals}
+                            </strong>
+
+                            <div className="hs-kpi-foot">
+                                <span className="hs-kpi-positive">
+                                    {healthyPercentage}%
+                                </span>
+
+                                <span>
+                                    Within thresholds
+                                </span>
+                            </div>
+                        </article>
+
+                        <article
                             className={`hs-kpi-card ${
-                                unresolvedAlerts.length >
-                                0
-                                    ? "critical-card"
+                                needsAttention > 0
+                                    ? "has-warning"
                                     : ""
                             }`}
                         >
+                            <div className="hs-kpi-top">
+                                <span className="hs-kpi-label">
+                                    NEEDS ATTENTION
+                                </span>
 
-                            <div className="hs-kpi-label">
-                                UNRESOLVED ALERTS
+                                <span className="hs-kpi-symbol warning">
+                                    !
+                                </span>
                             </div>
 
-                            <div className="hs-kpi-value">
+                            <strong className="hs-kpi-value">
+                                {loading
+                                    ? "—"
+                                    : needsAttention}
+                            </strong>
+
+                            <div className="hs-kpi-foot">
+                                <span className="hs-kpi-warning">
+                                    {warningAnimals}{" "}
+                                    warning
+                                </span>
+
+                                <span>
+                                    {criticalAnimals}{" "}
+                                    critical
+                                </span>
+                            </div>
+                        </article>
+
+                        <article
+                            className={`hs-kpi-card ${
+                                criticalAlerts.length >
+                                0
+                                    ? "has-critical"
+                                    : ""
+                            }`}
+                        >
+                            <div className="hs-kpi-top">
+                                <span className="hs-kpi-label">
+                                    UNRESOLVED ALERTS
+                                </span>
+
+                                <span className="hs-kpi-symbol critical">
+                                    !
+                                </span>
+                            </div>
+
+                            <strong className="hs-kpi-value">
                                 {loading
                                     ? "—"
                                     : unresolvedAlerts.length}
+                            </strong>
+
+                            <div className="hs-kpi-foot">
+                                <span
+                                    className={
+                                        criticalAlerts.length >
+                                        0
+                                            ? "hs-kpi-critical"
+                                            : "hs-kpi-positive"
+                                    }
+                                >
+                                    {
+                                        criticalAlerts.length
+                                    }{" "}
+                                    critical
+                                </span>
+
+                                <span>
+                                    Active alerts
+                                </span>
                             </div>
-
-                            <div className="hs-kpi-description">
-                                {
-                                    criticalAlerts.length
-                                }{" "}
-                                Critical
-                            </div>
-
-                            <div className="hs-kpi-icon critical">
-                                ⚠
-                            </div>
-
-                        </div>
-
+                        </article>
                     </section>
 
-                    {/* =====================================================
+                    {/* ============================================================
                         HEALTH + ENVIRONMENT
-                    ===================================================== */}
+                       ============================================================ */}
 
-                    <section className="hs-analysis-grid">
-
-                        {/* HEALTH */}
-
-                        <div className="hs-panel hs-health-panel">
-
+                    <section className="hs-dashboard-grid">
+                        <article className="hs-panel hs-health-panel">
                             <div className="hs-panel-header">
-
                                 <div>
-
-                                    <div className="hs-section-label">
+                                    <span className="hs-section-kicker">
                                         HERD HEALTH
-                                    </div>
-
-                                    <h2>
-                                        Current condition
-                                    </h2>
-
-                                </div>
-
-                                <div className="hs-panel-total">
-
-                                    <strong>
-                                        {
-                                            registeredAnimals
-                                        }
-                                    </strong>
-
-                                    <span>
-                                        animals monitored
                                     </span>
 
+                                    <h2>
+                                        Current health
+                                        distribution
+                                    </h2>
                                 </div>
 
+                                <span className="hs-panel-live">
+                                    LIVE
+                                </span>
                             </div>
 
                             <div className="hs-health-content">
-
-                                <div className="hs-ring-wrapper">
-
+                                <div className="hs-health-ring-wrap">
                                     <div
                                         className="hs-health-ring"
                                         style={{
@@ -1809,9 +1564,7 @@ export default function Dashboard() {
                                                 ringBackground,
                                         }}
                                     >
-
                                         <div className="hs-health-ring-inner">
-
                                             <strong>
                                                 {
                                                     healthyPercentage
@@ -1822,531 +1575,477 @@ export default function Dashboard() {
                                             <span>
                                                 healthy
                                             </span>
+                                        </div>
+                                    </div>
+                                </div>
 
+                                <div className="hs-health-legend">
+                                    <div className="hs-health-legend-row">
+                                        <span className="hs-legend-dot healthy" />
+
+                                        <div>
+                                            <strong>
+                                                {
+                                                    healthyAnimals
+                                                }
+                                            </strong>
+
+                                            <span>
+                                                Healthy
+                                            </span>
                                         </div>
 
+                                        <b>
+                                            {
+                                                healthyPercentage
+                                            }
+                                            %
+                                        </b>
                                     </div>
 
+                                    <div className="hs-health-legend-row">
+                                        <span className="hs-legend-dot warning" />
+
+                                        <div>
+                                            <strong>
+                                                {
+                                                    warningAnimals
+                                                }
+                                            </strong>
+
+                                            <span>
+                                                Warning
+                                            </span>
+                                        </div>
+
+                                        <b>
+                                            {
+                                                warningPercentage
+                                            }
+                                            %
+                                        </b>
+                                    </div>
+
+                                    <div className="hs-health-legend-row">
+                                        <span className="hs-legend-dot critical" />
+
+                                        <div>
+                                            <strong>
+                                                {
+                                                    criticalAnimals
+                                                }
+                                            </strong>
+
+                                            <span>
+                                                Critical
+                                            </span>
+                                        </div>
+
+                                        <b>
+                                            {
+                                                criticalPercentage
+                                            }
+                                            %
+                                        </b>
+                                    </div>
                                 </div>
-
-                                <div className="hs-health-bars">
-
-                                    <HealthBar
-                                        label="Healthy"
-                                        value={
-                                            healthyAnimals
-                                        }
-                                        percentage={
-                                            healthyPercentage
-                                        }
-                                        type="healthy"
-                                    />
-
-                                    <HealthBar
-                                        label="Warning"
-                                        value={
-                                            warningAnimals
-                                        }
-                                        percentage={
-                                            warningPercentage
-                                        }
-                                        type="warning"
-                                    />
-
-                                    <HealthBar
-                                        label="Critical"
-                                        value={
-                                            criticalAnimals
-                                        }
-                                        percentage={
-                                            criticalPercentage
-                                        }
-                                        type="critical"
-                                    />
-
-                                </div>
-
                             </div>
+                        </article>
 
-                        </div>
-
-                        {/* TEMPERATURE */}
-
-                        <div className="hs-panel hs-temperature-panel">
-
+                        <article className="hs-panel hs-environment-panel">
                             <div className="hs-panel-header">
-
                                 <div>
-
-                                    <div className="hs-section-label">
+                                    <span className="hs-section-kicker">
                                         ENVIRONMENTAL
                                         SIGNAL
-                                    </div>
+                                    </span>
 
                                     <h2>
-                                        Average temperature
+                                        Average
+                                        temperature
                                     </h2>
-
                                 </div>
 
-                                <button
-                                    className="hs-panel-icon"
-                                    type="button"
-                                    title="Temperature information"
+                                <span
+                                    className={`hs-panel-live ${
+                                        temperatureStatus ===
+                                        "Critical"
+                                            ? "critical"
+                                            : temperatureStatus ===
+                                              "Elevated"
+                                            ? "warning"
+                                            : ""
+                                    }`}
                                 >
-                                    °
-                                </button>
-
+                                    {temperatureStatus}
+                                </span>
                             </div>
 
-                            <div className="hs-temperature-value">
-
-                                {
-                                    averageTemperature.toFixed(
-                                        2
-                                    )
-                                }
+                            <div className="hs-temperature-display">
+                                <strong>
+                                    {averageTemperature !==
+                                    null
+                                        ? averageTemperature.toFixed(
+                                              1
+                                          )
+                                        : "—"}
+                                </strong>
 
                                 <span>
                                     °C
                                 </span>
-
                             </div>
 
-                            <p className="hs-temperature-description">
-                                Current herd-wide
-                                average calculated
-                                from available
-                                telemetry.
-                            </p>
-
                             <div className="hs-temperature-scale">
+                                <div className="hs-temperature-track">
+                                    <div className="hs-temperature-normal" />
 
-                                <div className="hs-scale-labels">
+                                    <div className="hs-temperature-warning" />
 
-                                    <span>
-                                        Normal
-                                    </span>
-
-                                    <span>
-                                        Elevated
-                                    </span>
-
-                                    <span>
-                                        Critical
-                                    </span>
-
-                                </div>
-
-                                <div className="hs-temperature-line">
-
-                                    <span className="normal" />
-
-                                    <span className="elevated" />
-
-                                    <span className="critical" />
+                                    <div className="hs-temperature-critical" />
 
                                     <i
+                                        className="hs-temperature-marker"
                                         style={{
                                             left: `${temperaturePosition}%`,
                                         }}
                                     />
-
                                 </div>
 
+                                <div className="hs-temperature-labels">
+                                    <span>
+                                        35°C
+                                    </span>
+
+                                    <span>
+                                        Normal range
+                                    </span>
+
+                                    <span>
+                                        43°C
+                                    </span>
+                                </div>
                             </div>
 
-                        </div>
+                            <div className="hs-environment-footer">
+                                <span>
+                                    Aggregated across
+                                    monitored animals
+                                </span>
 
+                                <strong>
+                                    {
+                                        registeredAnimals
+                                    }{" "}
+                                    animals
+                                </strong>
+                            </div>
+                        </article>
                     </section>
 
-                    {/* =====================================================
-                        LIVE GPS MAP
-                    ===================================================== */}
+                    {/* ============================================================
+                        GPS MAP
+                       ============================================================ */}
 
                     <section
+                        className="hs-panel hs-map-panel"
                         ref={
                             mapSectionRef
                         }
-                        className="hs-map-section"
                     >
+                        <div className="hs-panel-header">
+                            <div>
+                                <span className="hs-section-kicker">
+                                    LIVE GPS MONITORING
+                                </span>
 
-                        <MapView
-                            animals={
-                                mapAnimals
-                            }
-                            title="Live GPS Monitoring"
-                            showHeader={
-                                true
-                            }
-                        />
+                                <h2>
+                                    Animal locations
+                                </h2>
+                            </div>
 
+                            <div className="hs-map-header-meta">
+                                <span className="hs-map-count">
+                                    {
+                                        mapAnimals.length
+                                    }{" "}
+                                    positioned
+                                </span>
+
+                                <span
+                                    className={`hs-panel-live ${
+                                        websocketConnected
+                                            ? ""
+                                            : "offline"
+                                    }`}
+                                >
+                                    {websocketConnected
+                                        ? "LIVE"
+                                        : "STANDBY"}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="hs-map-container">
+                            {mapAnimals.length >
+                            0 ? (
+                                <MapView
+                                    animals={
+                                        mapAnimals
+                                    }
+                                />
+                            ) : (
+                                <div className="hs-map-empty">
+                                    <div className="hs-map-empty-icon">
+                                        ◎
+                                    </div>
+
+                                    <strong>
+                                        No GPS positions
+                                        available
+                                    </strong>
+
+                                    <span>
+                                        Animals with
+                                        location
+                                        telemetry will
+                                        appear here.
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </section>
 
-                    {/* =====================================================
-                        TELEMETRY
-                    ===================================================== */}
+                    {/* ============================================================
+                        LIVE TELEMETRY
+                       ============================================================ */}
 
                     <section className="hs-panel hs-telemetry-panel">
-
                         <div className="hs-panel-header">
-
                             <div>
-
-                                <div className="hs-section-label">
+                                <span className="hs-section-kicker">
                                     TELEMETRY
-                                </div>
+                                </span>
 
                                 <h2>
                                     Live animal signals
                                 </h2>
-
-                                <p>
-                                    Latest sensor reading
-                                    for each monitored
-                                    animal.
-                                </p>
-
                             </div>
 
-                            <div className="hs-live-badge">
-
-                                <span
-                                    className={`hs-status-dot ${
-                                        websocketConnected
-                                            ? "green"
-                                            : "red"
-                                    }`}
-                                />
-
+                            <span className="hs-panel-live">
                                 {websocketConnected
-                                    ? "LIVE"
-                                    : "OFFLINE"}
-
-                            </div>
-
+                                    ? "STREAMING"
+                                    : "POLLING"}
+                            </span>
                         </div>
 
-                        {animalRows.length ===
-                        0 ? (
+                        <div className="hs-table-wrapper">
+                            <table className="hs-telemetry-table">
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            ANIMAL
+                                        </th>
 
-                            <div className="hs-empty-state">
-                                No registered animal
-                                telemetry is currently
-                                available.
-                            </div>
+                                        <th>
+                                            HEALTH
+                                        </th>
 
-                        ) : (
+                                        <th>
+                                            TEMP.
+                                        </th>
 
-                            <div className="hs-table-wrapper">
+                                        <th>
+                                            HEART RATE
+                                        </th>
 
-                                <table className="hs-telemetry-table">
+                                        <th>
+                                            ACTIVITY
+                                        </th>
 
-                                    <thead>
+                                        <th>
+                                            BATTERY
+                                        </th>
 
+                                        <th>
+                                            LAST UPDATE
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {animalRows.length ===
+                                    0 ? (
                                         <tr>
+                                            <td
+                                                colSpan={
+                                                    7
+                                                }
+                                                className="hs-table-empty"
+                                            >
+                                                <div>
+                                                    <strong>
+                                                        {loading
+                                                            ? "Loading animal telemetry"
+                                                            : "No animals registered"}
+                                                    </strong>
 
-                                            <th>
-                                                ANIMAL
-                                            </th>
-
-                                            <th>
-                                                TEMPERATURE
-                                            </th>
-
-                                            <th>
-                                                HEART RATE
-                                            </th>
-
-                                            <th>
-                                                ACTIVITY
-                                            </th>
-
-                                            <th>
-                                                BATTERY
-                                            </th>
-
-                                            <th>
-                                                GPS
-                                            </th>
-
-                                            <th>
-                                                STATUS
-                                            </th>
-
-                                            <th>
-                                                LAST SIGNAL
-                                            </th>
-
+                                                    <span>
+                                                        {loading
+                                                            ? "Synchronizing the latest animal signals."
+                                                            : isFarmer &&
+                                                              farms.length ===
+                                                                  0
+                                                            ? "Register a farm and add animals to begin monitoring."
+                                                            : "Registered animals will appear here when telemetry is available."}
+                                                    </span>
+                                                </div>
+                                            </td>
                                         </tr>
-
-                                    </thead>
-
-                                    <tbody>
-
-                                        {animalRows.map(
-                                            ({
-                                                animal,
-                                                reading,
-                                            }) => {
-
-                                                const status =
-                                                    getHealthStatus(
-                                                        reading,
-                                                        animal
-                                                    );
-
-                                                const animalId =
-                                                    getAnimalId(
-                                                        animal,
-                                                        reading
-                                                    );
-
-                                                const animalName =
-                                                    getAnimalName(
-                                                        animal,
-                                                        reading
-                                                    );
-
-                                                const temperature =
-                                                    getTemperature(
-                                                        reading
-                                                    );
-
-                                                const heartRate =
-                                                    getHeartRate(
-                                                        reading
-                                                    );
-
-                                                const activity =
-                                                    getActivity(
-                                                        reading
-                                                    );
-
-                                                const battery =
-                                                    getBattery(
-                                                        reading
-                                                    );
-
-                                                const latitude =
-                                                    getLatitude(
-                                                        reading
-                                                    );
-
-                                                const longitude =
-                                                    getLongitude(
-                                                        reading
-                                                    );
-
-                                                return (
-                                                    <tr
-                                                        key={String(
-                                                            animalId
-                                                        )}
-                                                    >
-
-                                                        <td>
-
-                                                            <button
-                                                                type="button"
-                                                                className="hs-animal-cell hs-animal-cell-button"
-                                                                onClick={() =>
-                                                                    navigate(
-                                                                        `/animals/${animalId}/intelligence`
-                                                                    )
-                                                                }
-                                                            >
-
-                                                                <div className="hs-animal-avatar">
-
-                                                                    {String(
-                                                                        animalName
-                                                                    )
-                                                                        .slice(
-                                                                            0,
-                                                                            2
-                                                                        )
-                                                                        .toUpperCase()}
-
-                                                                </div>
-
-                                                                <div>
-
-                                                                    <strong>
-                                                                        {
-                                                                            animalName
-                                                                        }
-                                                                    </strong>
-
-                                                                    <small>
-                                                                        ID #
-                                                                        {
-                                                                            animalId
-                                                                        }
-                                                                    </small>
-
-                                                                </div>
-
-                                                            </button>
-
-                                                        </td>
-
-                                                        <td>
-
-                                                            <strong>
-                                                                {temperature >
-                                                                0
-                                                                    ? `${temperature.toFixed(
-                                                                          1
-                                                                      )}°C`
-                                                                    : "—"}
-                                                            </strong>
-
-                                                        </td>
-
-                                                        <td>
-
-                                                            {heartRate >
-                                                            0
-                                                                ? `${heartRate.toFixed(
-                                                                      0
-                                                                  )} BPM`
-                                                                : "—"}
-
-                                                        </td>
-
-                                                        <td>
-
-                                                            {activity >
-                                                            0
-                                                                ? `${activity.toFixed(
-                                                                      0
-                                                                  )}%`
-                                                                : "—"}
-
-                                                        </td>
-
-                                                        <td>
-
-                                                            <div className="hs-battery-cell">
-
-                                                                <span>
-                                                                    {battery >
-                                                                    0
-                                                                        ? `${battery.toFixed(
-                                                                              0
-                                                                          )}%`
-                                                                        : "—"}
-                                                                </span>
-
-                                                                {battery >
-                                                                    0 && (
-                                                                    <div className="hs-battery-bar">
-
-                                                                        <i
-                                                                            style={{
-                                                                                width: `${Math.min(
-                                                                                    100,
-                                                                                    Math.max(
-                                                                                        0,
-                                                                                        battery
-                                                                                    )
-                                                                                )}%`,
-                                                                            }}
-                                                                        />
-
-                                                                    </div>
-                                                                )}
-
-                                                            </div>
-
-                                                        </td>
-
-                                                        <td>
-
-                                                            {latitude !==
-                                                                undefined &&
-                                                            latitude !==
-                                                                null &&
-                                                            longitude !==
-                                                                undefined &&
-                                                            longitude !==
-                                                                null
-                                                                ? `${Number(
-                                                                      latitude
-                                                                  ).toFixed(
-                                                                      4
-                                                                  )}, ${Number(
-                                                                      longitude
-                                                                  ).toFixed(
-                                                                      4
-                                                                  )}`
-                                                                : "—"}
-
-                                                        </td>
-
-                                                        <td>
-
-                                                            <StatusBadge
-                                                                status={
-                                                                    status
-                                                                }
-                                                            />
-
-                                                        </td>
-
-                                                        <td>
-
-                                                            {formatDate(
-                                                                getTimestamp(
-                                                                    reading
+                                    ) : (
+                                        animalRows.map(
+                                            (
+                                                row
+                                            ) => (
+                                                <tr
+                                                    key={
+                                                        row.id
+                                                    }
+                                                >
+                                                    <td>
+                                                        <button
+                                                            className="hs-animal-cell-button"
+                                                            type="button"
+                                                            onClick={() =>
+                                                                navigate(
+                                                                    `/animals/${row.id}`
                                                                 )
+                                                            }
+                                                        >
+                                                            <span className="hs-animal-avatar">
+                                                                {getInitials(
+                                                                    row.name
+                                                                )}
+                                                            </span>
+
+                                                            <span className="hs-animal-cell">
+                                                                <strong>
+                                                                    {
+                                                                        row.name
+                                                                    }
+                                                                </strong>
+
+                                                                <small>
+                                                                    #
+                                                                    {
+                                                                        row.id
+                                                                    }
+                                                                </small>
+                                                            </span>
+                                                        </button>
+                                                    </td>
+
+                                                    <td>
+                                                        <span
+                                                            className={`hs-health-badge ${row.health}`}
+                                                        >
+                                                            <i />
+
+                                                            {row.health}
+                                                        </span>
+                                                    </td>
+
+                                                    <td>
+                                                        <span className="hs-table-value">
+                                                            {row.temperature !==
+                                                            null
+                                                                ? `${row.temperature.toFixed(
+                                                                      1
+                                                                  )}°C`
+                                                                : "—"}
+                                                        </span>
+                                                    </td>
+
+                                                    <td>
+                                                        {row.heartRate !==
+                                                        null
+                                                            ? `${Math.round(
+                                                                  row.heartRate
+                                                              )} bpm`
+                                                            : "—"}
+                                                    </td>
+
+                                                    <td>
+                                                        {row.activity !==
+                                                        null
+                                                            ? Math.round(
+                                                                  row.activity
+                                                              )
+                                                            : "—"}
+                                                    </td>
+
+                                                    <td>
+                                                        <div className="hs-battery-cell">
+                                                            <span>
+                                                                {row.battery !==
+                                                                null
+                                                                    ? `${Math.round(
+                                                                          row.battery
+                                                                      )}%`
+                                                                    : "—"}
+                                                            </span>
+
+                                                            {row.battery !==
+                                                                null && (
+                                                                <div className="hs-battery-bar">
+                                                                    <i
+                                                                        style={{
+                                                                            width: `${Math.min(
+                                                                                100,
+                                                                                Math.max(
+                                                                                    0,
+                                                                                    row.battery
+                                                                                )
+                                                                            )}%`,
+                                                                        }}
+                                                                    />
+                                                                </div>
                                                             )}
+                                                        </div>
+                                                    </td>
 
-                                                        </td>
-
-                                                    </tr>
-                                                );
-                                            }
-                                        )}
-
-                                    </tbody>
-
-                                </table>
-
-                            </div>
-
-                        )}
-
+                                                    <td className="hs-table-time">
+                                                        {formatDate(
+                                                            row.timestamp
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        )
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </section>
 
-                    {/* =====================================================
+                    {/* ============================================================
                         ALERT CENTER
-                    ===================================================== */}
+                       ============================================================ */}
 
                     <section className="hs-panel hs-alert-panel">
-
                         <div className="hs-panel-header">
-
                             <div>
-
-                                <div className="hs-section-label">
+                                <span className="hs-section-kicker">
                                     ALERT CENTER
-                                </div>
+                                </span>
 
                                 <h2>
-                                    Recent alerts
+                                    Operational attention
                                 </h2>
-
-                                <p>
-                                    Latest unresolved events
-                                    requiring attention.
-                                </p>
-
                             </div>
 
                             <button
-                                className="hs-view-all"
+                                className="hs-panel-link"
                                 type="button"
                                 onClick={() =>
                                     navigate(
@@ -2354,40 +2053,36 @@ export default function Dashboard() {
                                     )
                                 }
                             >
-                                View all →
+                                View all alerts
+                                <span>→</span>
                             </button>
-
                         </div>
 
-                        {unresolvedAlerts.length ===
-                        0 ? (
-
-                            <div className="hs-alert-empty">
-
-                                <div className="hs-alert-empty-icon">
-                                    ✓
-                                </div>
-
-                                <div>
-
-                                    <strong>
-                                        No unresolved alerts
-                                    </strong>
-
-                                    <span>
-                                        All monitored animals
-                                        are currently clear.
+                        <div className="hs-alert-list">
+                            {unresolvedAlerts.length ===
+                            0 ? (
+                                <div className="hs-alert-empty">
+                                    <span className="hs-alert-empty-icon">
+                                        ✓
                                     </span>
 
+                                    <div>
+                                        <strong>
+                                            No unresolved
+                                            alerts
+                                        </strong>
+
+                                        <span>
+                                            All current
+                                            operational
+                                            conditions are
+                                            within the
+                                            alert workflow.
+                                        </span>
+                                    </div>
                                 </div>
-
-                            </div>
-
-                        ) : (
-
-                            <div className="hs-alert-list">
-
-                                {unresolvedAlerts
+                            ) : (
+                                unresolvedAlerts
                                     .slice(
                                         0,
                                         6
@@ -2396,272 +2091,105 @@ export default function Dashboard() {
                                         (
                                             alert,
                                             index
-                                        ) => (
-
-                                            <AlertRow
-                                                key={
-                                                    alert?.id ??
-                                                    `${alert?.animal_id}-${index}`
-                                                }
-                                                alert={
+                                        ) => {
+                                            const severity =
+                                                getAlertSeverity(
                                                     alert
-                                                }
-                                                onAnimalClick={
-                                                    (
+                                                );
+
+                                            const animalId =
+                                                alert?.animal_id ??
+                                                alert?.animalId;
+
+                                            const animal =
+                                                animalMap.get(
+                                                    String(
                                                         animalId
-                                                    ) =>
-                                                        animalId &&
-                                                        navigate(
-                                                            `/animals/${animalId}/intelligence`
-                                                        )
-                                                }
-                                            />
+                                                    )
+                                                );
 
-                                        )
-                                    )}
+                                            const title =
+                                                alert?.title ||
+                                                alert?.message ||
+                                                alert?.description ||
+                                                "Operational alert";
 
-                            </div>
+                                            return (
+                                                <div
+                                                    className="hs-alert-row"
+                                                    key={
+                                                        alert?.id ??
+                                                        `${animalId}-${index}`
+                                                    }
+                                                >
+                                                    <span
+                                                        className={`hs-alert-severity ${severity}`}
+                                                    />
 
-                        )}
+                                                    <div className="hs-alert-main">
+                                                        <strong>
+                                                            {
+                                                                title
+                                                            }
+                                                        </strong>
 
+                                                        <span>
+                                                            {animal
+                                                                ? getAnimalName(
+                                                                      animal
+                                                                  )
+                                                                : animalId
+                                                                ? `Animal #${animalId}`
+                                                                : "System alert"}
+                                                        </span>
+                                                    </div>
+
+                                                    <span className="hs-alert-time">
+                                                        {formatDate(
+                                                            alert?.created_at ||
+                                                                alert?.timestamp ||
+                                                                alert?.updated_at
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            );
+                                        }
+                                    )
+                            )}
+                        </div>
                     </section>
-
-                    {/* =====================================================
-                        FOOTER
-                    ===================================================== */}
-
-                    <footer className="hs-dashboard-footer">
-
-                        <span>
-                            HerdSense AI
-                        </span>
-
-                        <span>
-                            Livestock intelligence
-                            platform
-                        </span>
-
-                        <span>
-                            © 2026
-                        </span>
-
-                    </footer>
-
                 </main>
 
-            </div>
+                {/* ================================================================
+                    FOOTER
+                   ================================================================ */}
 
+                <footer className="hs-dashboard-footer">
+                    <span>
+                        HERDSENSE AI
+                    </span>
+
+                    <span>
+                        Livestock Intelligence
+                        Platform
+                    </span>
+
+                    <span>
+                        <i
+                            className={`hs-footer-status ${
+                                apiOnline
+                                    ? "active"
+                                    : ""
+                            }`}
+                        />
+
+                        System{" "}
+                        {apiOnline
+                            ? "operational"
+                            : "offline"}
+                    </span>
+                </footer>
+            </div>
         </AppShell>
-    );
-}
-
-/* ==========================================================================
-   HEALTH BAR
-========================================================================== */
-
-function HealthBar({
-    label,
-    value,
-    percentage,
-    type,
-}) {
-    return (
-        <div className="hs-health-row">
-
-            <div className="hs-health-row-top">
-
-                <span
-                    className={`health-dot ${type}`}
-                />
-
-                <span className="hs-health-label">
-                    {label}
-                </span>
-
-                <strong>
-                    {value}
-                </strong>
-
-                <span className="hs-health-percentage">
-                    {percentage}%
-                </span>
-
-            </div>
-
-            <div className="hs-health-progress">
-
-                <div
-                    className={`hs-health-progress-fill ${type}`}
-                    style={{
-                        width: `${Math.min(
-                            100,
-                            Math.max(
-                                0,
-                                percentage
-                            )
-                        )}%`,
-                    }}
-                />
-
-            </div>
-
-        </div>
-    );
-}
-
-/* ==========================================================================
-   STATUS BADGE
-========================================================================== */
-
-function StatusBadge({
-    status,
-}) {
-    const safeStatus =
-        status === "critical" ||
-        status === "warning"
-            ? status
-            : "healthy";
-
-    const label =
-        safeStatus
-            .charAt(0)
-            .toUpperCase() +
-        safeStatus.slice(1);
-
-    return (
-        <span
-            className={`hs-status-badge ${safeStatus}`}
-        >
-
-            <span />
-
-            {label}
-
-        </span>
-    );
-}
-
-/* ==========================================================================
-   ALERT ROW
-========================================================================== */
-
-function AlertRow({
-    alert,
-    onAnimalClick,
-}) {
-    const severity =
-        getAlertSeverity(
-            alert
-        );
-
-    const title =
-        alert?.message ??
-        alert?.description ??
-        alert?.title ??
-        alert?.alert_message ??
-        "Livestock event detected";
-
-    const animalId =
-        alert?.animal_id ??
-        alert?.animalId ??
-        alert?.animal?.id ??
-        null;
-
-    const animalName =
-        alert?.animal_name ??
-        alert?.animalName ??
-        alert?.animal?.name ??
-        (animalId
-            ? `Animal #${animalId}`
-            : "Unknown animal");
-
-    const category =
-        alert?.category ??
-        alert?.type ??
-        alert?.alert_type ??
-        "Health Monitoring";
-
-    const timestamp =
-        alert?.timestamp ??
-        alert?.created_at ??
-        alert?.createdAt ??
-        alert?.time;
-
-    return (
-        <div
-            className={`hs-alert-row ${severity}`}
-        >
-
-            <div className="hs-alert-icon">
-
-                {severity ===
-                "critical"
-                    ? "!"
-                    : severity ===
-                      "warning"
-                    ? "!"
-                    : "✓"}
-
-            </div>
-
-            <div className="hs-alert-content">
-
-                <strong>
-                    {title}
-                </strong>
-
-                <div className="hs-alert-meta">
-
-                    {animalId ? (
-
-                        <button
-                            type="button"
-                            onClick={() =>
-                                onAnimalClick?.(
-                                    animalId
-                                )
-                            }
-                            className="hs-alert-animal-link"
-                        >
-                            {animalName}
-                        </button>
-
-                    ) : (
-
-                        <span>
-                            {animalName}
-                        </span>
-
-                    )}
-
-                    <span>
-                        ·
-                    </span>
-
-                    <span>
-                        {category}
-                    </span>
-
-                </div>
-
-            </div>
-
-            <div className="hs-alert-right">
-
-                <StatusBadge
-                    status={
-                        severity
-                    }
-                />
-
-                <time>
-                    {formatDate(
-                        timestamp
-                    )}
-                </time>
-
-            </div>
-
-        </div>
     );
 }
