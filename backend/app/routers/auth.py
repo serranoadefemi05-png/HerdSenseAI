@@ -426,12 +426,25 @@ def register(
 
     except Exception as exc:
 
-        # Account has already been created.
-        # Do not delete it because email delivery failed.
+        # The account has already been created.
+        # Keep it so the farmer can use the resend-verification
+        # flow after the email service is fixed.
+        #
+        # However, registration must NOT report success when
+        # the required verification email could not be delivered.
 
         print(
             "❌ HerdSense AI verification email error:",
             repr(exc),
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Your account was created, but we could not send the "
+                "verification email. Please try resending the verification "
+                "email shortly."
+            ),
         )
 
     return new_user
