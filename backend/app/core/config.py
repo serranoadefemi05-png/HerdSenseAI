@@ -45,15 +45,11 @@ class Settings(BaseSettings):
     )
 
     # =========================================================================
-    # GMAIL / SMTP
+    # RESEND EMAIL
     # =========================================================================
 
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-
-    SMTP_USERNAME: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_FROM_EMAIL: str = ""
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
 
     # =========================================================================
     # ADMIN

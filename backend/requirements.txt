@@ -6,8 +6,9 @@ pydantic
 pydantic-settings
 python-jose
 passlib
-bcrypt==4.3.0
+bcrypt==4.0.1
 python-multipart
 email-validator
 web3
 qrcode[pil]
+resend
