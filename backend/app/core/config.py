@@ -51,30 +51,26 @@ class Settings(BaseSettings):
     )
 
     # =========================================================================
-    # SMTP — BREVO
+    # BREVO TRANSACTIONAL EMAIL API
     # =========================================================================
     #
-    # These values should be supplied through environment variables in
-    # production. Do NOT hard-code the SMTP password/key here.
+    # Brevo sends transactional email through its HTTPS API.
     #
-    # Brevo:
-    # SMTP_HOST=smtp-relay.brevo.com
-    # SMTP_PORT=587
-    # SMTP_USERNAME=b828e4001@smtp-brevo.com
-    # SMTP_PASSWORD=<Brevo SMTP key>
-    # SMTP_FROM_EMAIL=herdsenseai@gmail.com
+    # Production environment variables:
+    #
+    # BREVO_API_KEY=<Brevo API key>
+    # BREVO_FROM_EMAIL=herdsenseai@gmail.com
+    #
+    # The API key must NEVER be hard-coded in this file.
+    #
+    # Brevo API endpoint:
+    # https://api.brevo.com/v3/smtp/email
     #
     # =========================================================================
 
-    SMTP_HOST: str = "smtp-relay.brevo.com"
+    BREVO_API_KEY: str = ""
 
-    SMTP_PORT: int = 587
-
-    SMTP_USERNAME: str = ""
-
-    SMTP_PASSWORD: str = ""
-
-    SMTP_FROM_EMAIL: str = "herdsenseai@gmail.com"
+    BREVO_FROM_EMAIL: str = "herdsenseai@gmail.com"
 
     # =========================================================================
     # ADMINISTRATORS

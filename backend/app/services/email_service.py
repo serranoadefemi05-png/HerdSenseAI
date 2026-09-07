@@ -1,52 +1,39 @@
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import json
 from html import escape
-import smtplib
-import ssl
+from urllib import error, request
 
 from app.core.config import settings
 
 
 # =============================================================================
 # HERDSENSE AI — EMAIL SERVICE
-# Brevo SMTP transactional email implementation
+# Brevo HTTPS transactional email implementation
 # =============================================================================
 
 
 # =============================================================================
-# CONFIGURATION VALIDATION
+# CONFIGURATION
 # =============================================================================
 
+BREVO_TRANSACTIONAL_EMAIL_URL = (
+    "https://api.brevo.com/v3/smtp/email"
+)
 
-def _validate_smtp_configuration() -> None:
+
+def _validate_brevo_configuration() -> None:
     """
     Validate the minimum configuration required to send email
-    through the configured SMTP provider.
+    through the Brevo transactional email API.
     """
 
-    if not settings.SMTP_HOST:
+    if not settings.BREVO_API_KEY:
         raise RuntimeError(
-            "SMTP_HOST is not configured."
+            "BREVO_API_KEY is not configured."
         )
 
-    if not settings.SMTP_PORT:
+    if not settings.BREVO_FROM_EMAIL:
         raise RuntimeError(
-            "SMTP_PORT is not configured."
-        )
-
-    if not settings.SMTP_USERNAME:
-        raise RuntimeError(
-            "SMTP_USERNAME is not configured."
-        )
-
-    if not settings.SMTP_PASSWORD:
-        raise RuntimeError(
-            "SMTP_PASSWORD is not configured."
-        )
-
-    if not settings.SMTP_FROM_EMAIL:
-        raise RuntimeError(
-            "SMTP_FROM_EMAIL is not configured."
+            "BREVO_FROM_EMAIL is not configured."
         )
 
 
@@ -76,7 +63,7 @@ def _validate_recipient(recipient: str) -> str:
 
 
 # =============================================================================
-# SMTP EMAIL SENDER
+# BREVO HTTPS EMAIL SENDER
 # =============================================================================
 
 
@@ -84,14 +71,16 @@ def _send_email(
     recipient: str,
     subject: str,
     html_body: str,
+    recipient_name: str | None = None,
 ) -> None:
     """
-    Send a transactional HTML email through Brevo SMTP.
+    Send a transactional HTML email through the Brevo HTTPS API.
 
-    Uses STARTTLS on the configured SMTP port.
+    Uses normal HTTPS traffic on port 443, avoiding SMTP port
+    restrictions on the Render Free service.
     """
 
-    _validate_smtp_configuration()
+    _validate_brevo_configuration()
 
     recipient = _validate_recipient(recipient)
 
@@ -107,132 +96,165 @@ def _send_email(
             "Email body is required."
         )
 
-    message = MIMEMultipart("alternative")
-
-    message["From"] = settings.SMTP_FROM_EMAIL
-
-    message["To"] = recipient
-
-    message["Subject"] = subject
-
     # -------------------------------------------------------------------------
-    # HTML MESSAGE
+    # BREVO REQUEST PAYLOAD
     # -------------------------------------------------------------------------
 
-    html_part = MIMEText(
-        html_body,
-        "html",
-        "utf-8",
+    sender = {
+        "email": settings.BREVO_FROM_EMAIL,
+        "name": "HerdSense AI",
+    }
+
+    recipient_data = {
+        "email": recipient,
+    }
+
+    if recipient_name:
+        recipient_data["name"] = recipient_name.strip()
+
+    payload = {
+        "sender": sender,
+        "to": [
+            recipient_data,
+        ],
+        "subject": subject,
+        "htmlContent": html_body,
+    }
+
+    payload_bytes = json.dumps(
+        payload,
+        ensure_ascii=False,
+    ).encode("utf-8")
+
+    # -------------------------------------------------------------------------
+    # HTTPS REQUEST
+    # -------------------------------------------------------------------------
+
+    headers = {
+        "accept": "application/json",
+        "api-key": settings.BREVO_API_KEY,
+        "content-type": "application/json",
+    }
+
+    brevo_request = request.Request(
+        BREVO_TRANSACTIONAL_EMAIL_URL,
+        data=payload_bytes,
+        headers=headers,
+        method="POST",
     )
 
-    message.attach(html_part)
-
-    # -------------------------------------------------------------------------
-    # SMTP CONNECTION
-    # -------------------------------------------------------------------------
-
     try:
-        context = ssl.create_default_context()
-
-        with smtplib.SMTP(
-            settings.SMTP_HOST,
-            settings.SMTP_PORT,
+        with request.urlopen(
+            brevo_request,
             timeout=20,
-        ) as server:
+        ) as response:
 
-            # -------------------------------------------------------------
-            # Identify ourselves to the SMTP server
-            # -------------------------------------------------------------
-
-            server.ehlo()
-
-            # -------------------------------------------------------------
-            # Upgrade connection to TLS
-            # -------------------------------------------------------------
-
-            server.starttls(
-                context=context
+            response_body = response.read().decode(
+                "utf-8",
+                errors="replace",
             )
 
-            server.ehlo()
+            status_code = response.status
 
-            # -------------------------------------------------------------
-            # Authenticate with Brevo
-            # -------------------------------------------------------------
+        if status_code not in (200, 201):
 
-            server.login(
-                settings.SMTP_USERNAME,
-                settings.SMTP_PASSWORD,
+            print(
+                "❌ HerdSense AI Brevo API unexpected "
+                f"status: {status_code}"
             )
 
-            # -------------------------------------------------------------
-            # Send message
-            # -------------------------------------------------------------
-
-            server.sendmail(
-                settings.SMTP_FROM_EMAIL,
-                [recipient],
-                message.as_string(),
+            raise RuntimeError(
+                "Brevo email provider returned an unexpected response."
             )
+
+        message_id = None
+
+        if response_body:
+            try:
+                response_json = json.loads(response_body)
+                message_id = response_json.get("messageId")
+            except json.JSONDecodeError:
+                pass
+
+        if message_id:
+            print(
+                "📧 HerdSense AI: "
+                f"Email accepted by Brevo for {recipient} "
+                f"(messageId={message_id})"
+            )
+        else:
+            print(
+                "📧 HerdSense AI: "
+                f"Email accepted by Brevo for {recipient}"
+            )
+
+    except error.HTTPError as exc:
+
+        response_body = ""
+
+        try:
+            response_body = exc.read().decode(
+                "utf-8",
+                errors="replace",
+            )
+        except Exception:
+            response_body = ""
 
         print(
-            "📧 HerdSense AI: "
-            f"Email sent successfully to {recipient}"
+            "❌ HerdSense AI Brevo API HTTP error:",
+            exc.code,
+            response_body,
         )
 
-    except smtplib.SMTPAuthenticationError as exc:
+        if exc.code in (401, 403):
 
-        print(
-            "❌ HerdSense AI SMTP authentication error:",
-            repr(exc),
-        )
+            raise RuntimeError(
+                "Brevo email authentication failed. "
+                "Check the BREVO_API_KEY configuration."
+            ) from exc
+
+        if exc.code == 400:
+
+            raise RuntimeError(
+                "Brevo rejected the email request. "
+                "Check the sender, recipient, and email payload."
+            ) from exc
 
         raise RuntimeError(
-            "Unable to authenticate with the SMTP email provider."
+            "Brevo email provider rejected the request."
         ) from exc
 
-    except smtplib.SMTPConnectError as exc:
+    except error.URLError as exc:
 
         print(
-            "❌ HerdSense AI SMTP connection error:",
-            repr(exc),
+            "❌ HerdSense AI Brevo network error:",
+            repr(exc.reason),
         )
 
         raise RuntimeError(
-            "Unable to connect to the SMTP email provider."
-        ) from exc
-
-    except smtplib.SMTPException as exc:
-
-        print(
-            "❌ HerdSense AI SMTP error:",
-            repr(exc),
-        )
-
-        raise RuntimeError(
-            "Unable to send email through SMTP."
+            "Unable to reach the Brevo email provider."
         ) from exc
 
     except TimeoutError as exc:
 
         print(
-            "❌ HerdSense AI SMTP timeout:",
+            "❌ HerdSense AI Brevo timeout:",
             repr(exc),
         )
 
         raise RuntimeError(
-            "SMTP email provider connection timed out."
+            "Brevo email provider connection timed out."
         ) from exc
 
     except OSError as exc:
 
         print(
-            "❌ HerdSense AI SMTP network error:",
+            "❌ HerdSense AI Brevo network error:",
             repr(exc),
         )
 
         raise RuntimeError(
-            "Unable to reach the SMTP email provider."
+            "Unable to reach the Brevo email provider."
         ) from exc
 
     except Exception as exc:
@@ -256,6 +278,7 @@ def send_email(
     recipient: str,
     subject: str,
     html_body: str,
+    recipient_name: str | None = None,
 ) -> None:
     """
     Public email service interface.
@@ -268,6 +291,7 @@ def send_email(
         recipient=recipient,
         subject=subject,
         html_body=html_body,
+        recipient_name=recipient_name,
     )
 
 
@@ -497,6 +521,7 @@ def send_verification_email(
         recipient=recipient,
         subject=subject,
         html_body=html_body,
+        recipient_name=full_name,
     )
 
 
@@ -737,4 +762,5 @@ def send_password_reset_email(
         recipient=recipient,
         subject=subject,
         html_body=html_body,
+        recipient_name=full_name,
     )
