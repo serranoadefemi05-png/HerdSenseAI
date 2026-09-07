@@ -11,4 +11,3 @@ python-multipart
 email-validator
 web3
 qrcode[pil]
-resend
