@@ -17,11 +17,13 @@ import api from "../api/api";
 import useTelemetrySocket from "../hooks/useTelemetrySocket";
 import "./Dashboard.css";
 
+
 const REFRESH_INTERVAL = 30000;
+
 
 /* ==========================================================================
    DATA HELPERS
-   ========================================================================== */
+========================================================================== */
 
 const getNumber = (value, fallback = null) => {
     const number = Number(value);
@@ -30,6 +32,7 @@ const getNumber = (value, fallback = null) => {
         ? number
         : fallback;
 };
+
 
 const getAnimalId = (animal) => {
     if (!animal) {
@@ -45,6 +48,7 @@ const getAnimalId = (animal) => {
     );
 };
 
+
 const getAnimalName = (animal) => {
     if (!animal) {
         return "Unknown animal";
@@ -59,12 +63,14 @@ const getAnimalName = (animal) => {
     );
 };
 
+
 const getTemperature = (animal) =>
     getNumber(
         animal?.temperature ??
             animal?.temp ??
             animal?.temperature_c
     );
+
 
 const getHeartRate = (animal) =>
     getNumber(
@@ -73,11 +79,13 @@ const getHeartRate = (animal) =>
             animal?.hr
     );
 
+
 const getActivity = (animal) =>
     getNumber(
         animal?.activity ??
             animal?.activity_level
     );
+
 
 const getBattery = (animal) =>
     getNumber(
@@ -86,11 +94,13 @@ const getBattery = (animal) =>
             animal?.batteryLevel
     );
 
+
 const getLatitude = (animal) =>
     getNumber(
         animal?.latitude ??
             animal?.lat
     );
+
 
 const getLongitude = (animal) =>
     getNumber(
@@ -99,12 +109,14 @@ const getLongitude = (animal) =>
             animal?.lon
     );
 
+
 const getTimestamp = (animal) =>
     animal?.timestamp ||
     animal?.recorded_at ||
     animal?.created_at ||
     animal?.updated_at ||
     null;
+
 
 const getTimestampMs = (animal) => {
     const timestamp = getTimestamp(animal);
@@ -119,6 +131,7 @@ const getTimestampMs = (animal) => {
         ? parsed
         : 0;
 };
+
 
 const formatDate = (value) => {
     if (!value) {
@@ -139,6 +152,7 @@ const formatDate = (value) => {
     });
 };
 
+
 const getTelemetryAnimalId = (telemetry) => {
     if (!telemetry) {
         return undefined;
@@ -151,9 +165,142 @@ const getTelemetryAnimalId = (telemetry) => {
     );
 };
 
+
+/* ==========================================================================
+   ROBUST AUTH / ROLE HELPERS
+========================================================================== */
+
+/**
+ * Safely parse JSON stored in localStorage.
+ *
+ * Some versions of the application store the authenticated user as JSON
+ * under "herdsense_user". Other versions may store role information directly
+ * under "user_role".
+ */
+const parseStoredUser = () => {
+    const candidates = [
+        "herdsense_user",
+        "user",
+        "current_user",
+        "auth_user",
+    ];
+
+    for (const key of candidates) {
+        const raw = localStorage.getItem(key);
+
+        if (!raw) {
+            continue;
+        }
+
+        try {
+            const parsed = JSON.parse(raw);
+
+            if (
+                parsed &&
+                typeof parsed === "object"
+            ) {
+                return parsed;
+            }
+        } catch (error) {
+            /*
+             * Ignore invalid JSON and continue checking the remaining
+             * storage keys.
+             */
+            console.debug(
+                `[HerdSense AI] Unable to parse ${key} from localStorage.`,
+                error
+            );
+        }
+    }
+
+    return null;
+};
+
+
+/**
+ * Normalize role values so:
+ *
+ * "Farmer"
+ * "FARMER"
+ * " farmer "
+ *
+ * all resolve to:
+ *
+ * "farmer"
+ */
+const normalizeRole = (value) => {
+    if (
+        value === null ||
+        value === undefined
+    ) {
+        return "";
+    }
+
+    return String(value)
+        .trim()
+        .toLowerCase()
+        .replace(/[\s_-]+/g, "");
+};
+
+
+/**
+ * Determine whether the currently authenticated user is a farmer.
+ *
+ * Role sources are checked in a deliberate order:
+ *
+ * 1. herdsense_user / user objects
+ * 2. user_role localStorage value
+ * 3. other common role fields
+ *
+ * This prevents the dashboard from hiding farmer functionality merely
+ * because one particular localStorage representation is missing.
+ */
+const getStoredUserRole = () => {
+    const storedUser =
+        parseStoredUser();
+
+    const directRole =
+        localStorage.getItem(
+            "user_role"
+        );
+
+    const roleCandidates = [
+        storedUser?.role,
+        storedUser?.user_role,
+        storedUser?.userRole,
+        storedUser?.account_type,
+        storedUser?.accountType,
+        storedUser?.type,
+        directRole,
+    ];
+
+    for (const role of roleCandidates) {
+        const normalized =
+            normalizeRole(role);
+
+        if (normalized) {
+            return normalized;
+        }
+    }
+
+    return "";
+};
+
+
+const isFarmerUser = () => {
+    const role =
+        getStoredUserRole();
+
+    return (
+        role === "farmer" ||
+        role === "farmers"
+    );
+};
+
+
 /* ==========================================================================
    TELEMETRY MERGING
-   ========================================================================== */
+========================================================================== */
 
 const mergeLatestTelemetry = (
     existing,
@@ -171,7 +318,10 @@ const mergeLatestTelemetry = (
     const byAnimal = new Map();
 
     combined.forEach((item) => {
-        const id = getTelemetryAnimalId(item);
+        const id =
+            getTelemetryAnimalId(
+                item
+            );
 
         if (
             id === undefined ||
@@ -180,14 +330,18 @@ const mergeLatestTelemetry = (
             return;
         }
 
-        const current = byAnimal.get(id);
+        const current =
+            byAnimal.get(id);
 
         if (
             !current ||
             getTimestampMs(item) >=
                 getTimestampMs(current)
         ) {
-            byAnimal.set(id, item);
+            byAnimal.set(
+                id,
+                item
+            );
         }
     });
 
@@ -196,12 +350,15 @@ const mergeLatestTelemetry = (
     );
 };
 
+
 const replaceLatestTelemetry = (
     existing,
     incoming
 ) => {
     const incomingId =
-        getTelemetryAnimalId(incoming);
+        getTelemetryAnimalId(
+            incoming
+        );
 
     if (
         incomingId === undefined ||
@@ -214,25 +371,31 @@ const replaceLatestTelemetry = (
         ? [...existing]
         : [];
 
-    const index = current.findIndex(
-        (item) =>
-            String(
-                getTelemetryAnimalId(item)
-            ) === String(incomingId)
-    );
+    const index =
+        current.findIndex(
+            (item) =>
+                String(
+                    getTelemetryAnimalId(
+                        item
+                    )
+                ) ===
+                String(incomingId)
+        );
 
     if (index === -1) {
         current.push(incoming);
     } else {
-        current[index] = incoming;
+        current[index] =
+            incoming;
     }
 
     return current;
 };
 
+
 /* ==========================================================================
    ALERT HELPERS
-   ========================================================================== */
+========================================================================== */
 
 const isAlertResolved = (alert) =>
     Boolean(
@@ -240,6 +403,7 @@ const isAlertResolved = (alert) =>
             alert?.is_resolved ??
             alert?.closed
     );
+
 
 const getAlertSeverity = (alert) => {
     const severity = String(
@@ -266,9 +430,10 @@ const getAlertSeverity = (alert) => {
     return "warning";
 };
 
+
 /* ==========================================================================
    HEALTH
-   ========================================================================== */
+========================================================================== */
 
 const getHealthStatus = (
     animal,
@@ -350,6 +515,7 @@ const getHealthStatus = (
     return "healthy";
 };
 
+
 const getInitials = (name) => {
     if (!name) {
         return "AN";
@@ -364,20 +530,23 @@ const getInitials = (name) => {
         .join("");
 };
 
+
 /* ==========================================================================
    COMPONENT
-   ========================================================================== */
+========================================================================== */
 
 export default function Dashboard() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const userRole =
-        localStorage.getItem("user_role") ||
-        "";
-
-    const isFarmer =
-        userRole.toLowerCase() === "farmer";
+    /*
+     * Determine the initial role using every supported localStorage
+     * representation rather than depending exclusively on "user_role".
+     */
+    const [isFarmer, setIsFarmer] =
+        useState(() =>
+            isFarmerUser()
+        );
 
     const [dashboard, setDashboard] =
         useState(null);
@@ -414,6 +583,26 @@ export default function Dashboard() {
 
     const dashboardRequestRef =
         useRef(0);
+
+
+    /* ----------------------------------------------------------------------
+       REFRESH AUTH ROLE
+       ---------------------------------------------------------------------- */
+
+    useEffect(() => {
+        /*
+         * Re-read the role when the dashboard mounts or when navigation
+         * returns to it. This handles login flows where localStorage is
+         * populated immediately before the dashboard renders.
+         */
+        setIsFarmer(
+            isFarmerUser()
+        );
+    }, [
+        location.pathname,
+        location.key,
+    ]);
+
 
     /* ----------------------------------------------------------------------
        LIVE TELEMETRY
@@ -458,11 +647,13 @@ export default function Dashboard() {
             []
         );
 
+
     const {
         connected: websocketConnected,
     } = useTelemetrySocket(
         handleLiveTelemetry
     );
+
 
     /* ----------------------------------------------------------------------
        LOAD DASHBOARD
@@ -482,17 +673,38 @@ export default function Dashboard() {
 
                 setError("");
 
+                /*
+                 * Refresh role state before deciding whether to request
+                 * farmer-specific farm data.
+                 */
+                const farmer =
+                    isFarmerUser();
+
+                setIsFarmer(
+                    farmer
+                );
+
                 try {
                     const requests = [
-                        api.get("/dashboard/"),
-                        api.get("/animals/"),
-                        api.get("/telemetry/"),
-                        api.get("/alerts/"),
+                        api.get(
+                            "/dashboard/"
+                        ),
+                        api.get(
+                            "/animals/"
+                        ),
+                        api.get(
+                            "/telemetry/"
+                        ),
+                        api.get(
+                            "/alerts/"
+                        ),
                     ];
 
-                    if (isFarmer) {
+                    if (farmer) {
                         requests.push(
-                            api.get("/farms/")
+                            api.get(
+                                "/farms/"
+                            )
                         );
                     }
 
@@ -551,7 +763,7 @@ export default function Dashboard() {
                               [];
 
                     const farmData =
-                        isFarmer &&
+                        farmer &&
                         farmsResponse
                             ? Array.isArray(
                                   farmsResponse?.data
@@ -584,12 +796,16 @@ export default function Dashboard() {
                         mergedTelemetry
                     );
 
-                    setAlerts(alertData);
+                    setAlerts(
+                        alertData
+                    );
 
-                    if (isFarmer) {
+                    if (farmer) {
                         setFarms(
                             farmData
                         );
+                    } else {
+                        setFarms([]);
                     }
 
                     setApiOnline(true);
@@ -619,6 +835,18 @@ export default function Dashboard() {
                             "herdsense_user"
                         );
 
+                        localStorage.removeItem(
+                            "user"
+                        );
+
+                        localStorage.removeItem(
+                            "current_user"
+                        );
+
+                        localStorage.removeItem(
+                            "auth_user"
+                        );
+
                         navigate(
                             "/login",
                             {
@@ -639,8 +867,11 @@ export default function Dashboard() {
                     setRefreshing(false);
                 }
             },
-            [isFarmer, navigate]
+            [
+                navigate,
+            ]
         );
+
 
     /* ----------------------------------------------------------------------
        INITIAL LOAD
@@ -655,9 +886,14 @@ export default function Dashboard() {
             }, REFRESH_INTERVAL);
 
         return () => {
-            clearInterval(interval);
+            clearInterval(
+                interval
+            );
         };
-    }, [loadDashboard]);
+    }, [
+        loadDashboard,
+    ]);
+
 
     /* ----------------------------------------------------------------------
        FARM REGISTRATION SUCCESS
@@ -685,16 +921,19 @@ export default function Dashboard() {
         navigate,
     ]);
 
+
     /* ==========================================================================
        DERIVED DATA
-       ========================================================================== */
+    ========================================================================== */
 
     const animalMap = useMemo(() => {
         const map = new Map();
 
         animals.forEach((animal) => {
             const id =
-                getAnimalId(animal);
+                getAnimalId(
+                    animal
+                );
 
             if (
                 id !== undefined &&
@@ -708,152 +947,174 @@ export default function Dashboard() {
         });
 
         return map;
-    }, [animals]);
+    }, [
+        animals,
+    ]);
 
-    const latestTelemetry = useMemo(
-        () => {
-            const map = new Map();
 
-            telemetry.forEach(
-                (item) => {
-                    const id =
-                        getTelemetryAnimalId(
-                            item
-                        );
+    const latestTelemetry =
+        useMemo(
+            () => {
+                const map =
+                    new Map();
 
-                    if (
-                        id !==
-                            undefined &&
-                        id !== null
-                    ) {
-                        map.set(
-                            String(id),
-                            item
-                        );
+                telemetry.forEach(
+                    (item) => {
+                        const id =
+                            getTelemetryAnimalId(
+                                item
+                            );
+
+                        if (
+                            id !==
+                                undefined &&
+                            id !== null
+                        ) {
+                            map.set(
+                                String(id),
+                                item
+                            );
+                        }
                     }
-                }
-            );
+                );
 
-            return map;
-        },
-        [telemetry]
-    );
+                return map;
+            },
+            [
+                telemetry,
+            ]
+        );
 
-    const animalRows = useMemo(
-        () =>
-            animals.map(
-                (animal) => {
-                    const id =
-                        getAnimalId(
-                            animal
-                        );
 
-                    const live =
-                        latestTelemetry.get(
-                            String(id)
-                        );
-
-                    const source = {
-                        ...animal,
-                        ...(live || {}),
-                    };
-
-                    return {
-                        animal,
-                        telemetry:
-                            live,
-                        id,
-                        name:
-                            getAnimalName(
+    const animalRows =
+        useMemo(
+            () =>
+                animals.map(
+                    (animal) => {
+                        const id =
+                            getAnimalId(
                                 animal
-                            ),
-                        temperature:
-                            getTemperature(
-                                source
-                            ),
-                        heartRate:
-                            getHeartRate(
-                                source
-                            ),
-                        activity:
-                            getActivity(
-                                source
-                            ),
-                        battery:
-                            getBattery(
-                                source
-                            ),
-                        timestamp:
-                            getTimestamp(
-                                source
-                            ),
-                        health:
-                            getHealthStatus(
-                                animal,
-                                live
-                            ),
-                    };
-                }
-            ),
-        [
-            animals,
-            latestTelemetry,
-        ]
-    );
+                            );
 
-    const mapAnimals = useMemo(
-        () =>
-            animals
-                .map((animal) => {
-                    const id =
-                        getAnimalId(
-                            animal
-                        );
+                        const live =
+                            latestTelemetry.get(
+                                String(id)
+                            );
 
-                    const live =
-                        latestTelemetry.get(
-                            String(id)
-                        );
+                        const source = {
+                            ...animal,
+                            ...(live || {}),
+                        };
 
-                    return {
-                        ...animal,
-                        ...(live || {}),
-                    };
-                })
-                .filter(
-                    (animal) =>
-                        getLatitude(
-                            animal
-                        ) !== null &&
-                        getLongitude(
-                            animal
-                        ) !== null
+                        return {
+                            animal,
+                            telemetry:
+                                live,
+                            id,
+                            name:
+                                getAnimalName(
+                                    animal
+                                ),
+                            temperature:
+                                getTemperature(
+                                    source
+                                ),
+                            heartRate:
+                                getHeartRate(
+                                    source
+                                ),
+                            activity:
+                                getActivity(
+                                    source
+                                ),
+                            battery:
+                                getBattery(
+                                    source
+                                ),
+                            timestamp:
+                                getTimestamp(
+                                    source
+                                ),
+                            health:
+                                getHealthStatus(
+                                    animal,
+                                    live
+                                ),
+                        };
+                    }
                 ),
-        [
-            animals,
-            latestTelemetry,
-        ]
-    );
+            [
+                animals,
+                latestTelemetry,
+            ]
+        );
+
+
+    const mapAnimals =
+        useMemo(
+            () =>
+                animals
+                    .map(
+                        (animal) => {
+                            const id =
+                                getAnimalId(
+                                    animal
+                                );
+
+                            const live =
+                                latestTelemetry.get(
+                                    String(id)
+                                );
+
+                            return {
+                                ...animal,
+                                ...(live || {}),
+                            };
+                        }
+                    )
+                    .filter(
+                        (animal) =>
+                            getLatitude(
+                                animal
+                            ) !== null &&
+                            getLongitude(
+                                animal
+                            ) !== null
+                    ),
+            [
+                animals,
+                latestTelemetry,
+            ]
+        );
+
 
     const computedHealth =
-        useMemo(() => {
-            const result = {
-                healthy: 0,
-                warning: 0,
-                critical: 0,
-            };
+        useMemo(
+            () => {
+                const result = {
+                    healthy: 0,
+                    warning: 0,
+                    critical: 0,
+                };
 
-            animalRows.forEach(
-                (row) => {
-                    result[row.health] =
-                        (result[
-                            row.health
-                        ] || 0) + 1;
-                }
-            );
+                animalRows.forEach(
+                    (row) => {
+                        result[row.health] =
+                            (
+                                result[
+                                    row.health
+                                ] || 0
+                            ) + 1;
+                    }
+                );
 
-            return result;
-        }, [animalRows]);
+                return result;
+            },
+            [
+                animalRows,
+            ]
+        );
+
 
     const registeredAnimals =
         animals.length;
@@ -871,62 +1132,82 @@ export default function Dashboard() {
         warningAnimals +
         criticalAnimals;
 
+
     const healthyPercentage =
         registeredAnimals > 0
             ? Math.round(
-                  (healthyAnimals /
-                      registeredAnimals) *
+                  (
+                      healthyAnimals /
+                      registeredAnimals
+                  ) *
                       100
               )
             : 0;
+
 
     const warningPercentage =
         registeredAnimals > 0
             ? Math.round(
-                  (warningAnimals /
-                      registeredAnimals) *
+                  (
+                      warningAnimals /
+                      registeredAnimals
+                  ) *
                       100
               )
             : 0;
+
 
     const criticalPercentage =
         registeredAnimals > 0
             ? Math.round(
-                  (criticalAnimals /
-                      registeredAnimals) *
+                  (
+                      criticalAnimals /
+                      registeredAnimals
+                  ) *
                       100
               )
             : 0;
 
+
     const averageTemperature =
-        useMemo(() => {
-            const values =
-                animalRows
-                    .map(
-                        (row) =>
-                            row.temperature
-                    )
-                    .filter(
-                        (value) =>
-                            value !==
-                                null &&
-                            Number.isFinite(
-                                value
-                            )
-                    );
+        useMemo(
+            () => {
+                const values =
+                    animalRows
+                        .map(
+                            (row) =>
+                                row.temperature
+                        )
+                        .filter(
+                            (value) =>
+                                value !==
+                                    null &&
+                                Number.isFinite(
+                                    value
+                                )
+                        );
 
-            if (!values.length) {
-                return null;
-            }
+                if (!values.length) {
+                    return null;
+                }
 
-            return (
-                values.reduce(
-                    (sum, value) =>
-                        sum + value,
-                    0
-                ) / values.length
-            );
-        }, [animalRows]);
+                return (
+                    values.reduce(
+                        (
+                            sum,
+                            value
+                        ) =>
+                            sum + value,
+                        0
+                    ) /
+                    values.length
+                );
+            },
+            [
+                animalRows,
+            ]
+        );
+
 
     const unresolvedAlerts =
         alerts.filter(
@@ -936,6 +1217,7 @@ export default function Dashboard() {
                 )
         );
 
+
     const criticalAlerts =
         unresolvedAlerts.filter(
             (alert) =>
@@ -944,34 +1226,45 @@ export default function Dashboard() {
                 ) === "critical"
         );
 
-    const ringBackground = `conic-gradient(
-        #38d996 0deg ${healthyPercentage * 3.6}deg,
-        #ffb65c ${healthyPercentage * 3.6}deg ${
-        (healthyPercentage +
-            warningPercentage) *
-        3.6
-    }deg,
-        #ff5e6c ${
-            (healthyPercentage +
-                warningPercentage) *
-            3.6
-        }deg 360deg
-    )`;
+
+    const ringBackground =
+        `conic-gradient(
+            #38d996 0deg ${healthyPercentage * 3.6}deg,
+            #ffb65c ${healthyPercentage * 3.6}deg ${
+                (
+                    healthyPercentage +
+                    warningPercentage
+                ) *
+                3.6
+            }deg,
+            #ff5e6c ${
+                (
+                    healthyPercentage +
+                    warningPercentage
+                ) *
+                3.6
+            }deg 360deg
+        )`;
+
 
     const temperaturePosition =
-        averageTemperature ===
-        null
+        averageTemperature === null
             ? 0
             : Math.min(
                   100,
                   Math.max(
                       0,
-                      ((averageTemperature -
-                          35) /
-                          8) *
+                      (
+                          (
+                              averageTemperature -
+                              35
+                          ) /
+                          8
+                      ) *
                           100
                   )
               );
+
 
     const temperatureStatus =
         averageTemperature === null
@@ -982,29 +1275,36 @@ export default function Dashboard() {
             ? "Elevated"
             : "Within range";
 
+
     const scrollToMap =
         useCallback(() => {
             mapSectionRef.current?.scrollIntoView(
                 {
-                    behavior: "smooth",
+                    behavior:
+                        "smooth",
                     block: "start",
                 }
             );
         }, []);
 
+
     /* ==========================================================================
        RENDER
-       ========================================================================== */
+    ========================================================================== */
 
     return (
         <AppShell>
+
             <div className="hs-dashboard">
+
                 {/* ================================================================
                     COMMAND BAR
                    ================================================================ */}
 
                 <header className="hs-dashboard-topbar">
+
                     <div className="hs-dashboard-title">
+
                         <span className="hs-dashboard-eyebrow">
                             COMMAND CENTER
                         </span>
@@ -1012,9 +1312,12 @@ export default function Dashboard() {
                         <span className="hs-dashboard-page-title">
                             Overview
                         </span>
+
                     </div>
 
+
                     <div className="hs-dashboard-actions">
+
                         {isFarmer && (
                             <button
                                 className="hs-action-button hs-action-button-primary"
@@ -1025,10 +1328,14 @@ export default function Dashboard() {
                                     )
                                 }
                             >
-                                <span>+</span>
+                                <span>
+                                    +
+                                </span>
+
                                 Register Farm
                             </button>
                         )}
+
 
                         <button
                             className="hs-action-button"
@@ -1040,7 +1347,9 @@ export default function Dashboard() {
                             Live Map
                         </button>
 
+
                         <div className="hs-system-status">
+
                             <span
                                 className={`hs-status-dot ${
                                     apiOnline
@@ -1055,9 +1364,12 @@ export default function Dashboard() {
                                     ? "Online"
                                     : "Offline"}
                             </span>
+
                         </div>
 
+
                         <div className="hs-system-status">
+
                             <span
                                 className={`hs-status-dot ${
                                     websocketConnected
@@ -1072,7 +1384,9 @@ export default function Dashboard() {
                                     ? "Live"
                                     : "Standby"}
                             </span>
+
                         </div>
+
 
                         <button
                             className="hs-refresh-button"
@@ -1098,18 +1412,24 @@ export default function Dashboard() {
                                 ↻
                             </span>
                         </button>
+
                     </div>
+
                 </header>
+
 
                 {/* ================================================================
                     CONTENT
                    ================================================================ */}
 
                 <main className="hs-dashboard-content">
+
                     {/* HERO */}
 
                     <section className="hs-dashboard-hero">
+
                         <div className="hs-dashboard-hero-main">
+
                             <span className="hs-section-kicker">
                                 LIVE OPERATIONS
                             </span>
@@ -1126,9 +1446,12 @@ export default function Dashboard() {
                                 operational risk from one
                                 control surface.
                             </p>
+
                         </div>
 
+
                         <div className="hs-dashboard-hero-meta">
+
                             <div>
                                 <span>
                                     LAST SYNCHRONIZED
@@ -1145,6 +1468,7 @@ export default function Dashboard() {
                                         : "Awaiting data"}
                                 </strong>
                             </div>
+
 
                             <div>
                                 <span>
@@ -1165,18 +1489,23 @@ export default function Dashboard() {
                                         : "Standby"}
                                 </strong>
                             </div>
+
                         </div>
+
                     </section>
+
 
                     {/* ERROR */}
 
                     {error && (
                         <div className="hs-dashboard-error">
+
                             <div className="hs-error-icon">
                                 !
                             </div>
 
                             <div className="hs-error-content">
+
                                 <strong>
                                     Data connection
                                     issue
@@ -1185,6 +1514,7 @@ export default function Dashboard() {
                                 <span>
                                     {error}
                                 </span>
+
                             </div>
 
                             <button
@@ -1197,8 +1527,10 @@ export default function Dashboard() {
                             >
                                 Retry
                             </button>
+
                         </div>
                     )}
+
 
                     {/* ============================================================
                         FARM OPERATIONS
@@ -1206,22 +1538,23 @@ export default function Dashboard() {
 
                     {isFarmer && (
                         <section className="hs-farm-operations">
+
                             <div className="hs-section-heading">
+
                                 <div>
+
                                     <span className="hs-section-kicker">
                                         FARM OPERATIONS
                                     </span>
 
                                     <h2>
-                                        {farms.length ===
-                                        0
+                                        {farms.length === 0
                                             ? "Set up your farm"
                                             : "Your farms"}
                                     </h2>
 
                                     <p>
-                                        {farms.length ===
-                                        0
+                                        {farms.length === 0
                                             ? "Register a farm to begin building your livestock intelligence workspace."
                                             : `${farms.length} farm${
                                                   farms.length ===
@@ -1230,7 +1563,9 @@ export default function Dashboard() {
                                                       : "s"
                                               } connected to your account.`}
                                     </p>
+
                                 </div>
+
 
                                 <button
                                     className="hs-farm-primary-action"
@@ -1241,23 +1576,29 @@ export default function Dashboard() {
                                         )
                                     }
                                 >
-                                    <span>+</span>
+                                    <span>
+                                        +
+                                    </span>
 
-                                    {farms.length ===
-                                    0
+                                    {farms.length === 0
                                         ? "Register Farm"
                                         : "Add Farm"}
                                 </button>
+
                             </div>
+
 
                             {farms.length ===
                             0 ? (
                                 <div className="hs-farm-empty-state">
+
                                     <div className="hs-farm-empty-icon">
                                         ⌂
                                     </div>
 
+
                                     <div className="hs-farm-empty-copy">
+
                                         <strong>
                                             No farm
                                             registered
@@ -1273,7 +1614,9 @@ export default function Dashboard() {
                                             and health
                                             intelligence.
                                         </span>
+
                                     </div>
+
 
                                     <button
                                         type="button"
@@ -1284,11 +1627,15 @@ export default function Dashboard() {
                                         }
                                     >
                                         Start registration
-                                        <span>→</span>
+                                        <span>
+                                            →
+                                        </span>
                                     </button>
+
                                 </div>
                             ) : (
                                 <div className="hs-farm-list">
+
                                     {farms.map(
                                         (
                                             farm
@@ -1299,8 +1646,11 @@ export default function Dashboard() {
                                                     farm.id
                                                 }
                                             >
+
                                                 <div className="hs-farm-card-top">
+
                                                     <div className="hs-farm-identity">
+
                                                         <div className="hs-farm-avatar">
                                                             {getInitials(
                                                                 farm.name
@@ -1308,6 +1658,7 @@ export default function Dashboard() {
                                                         </div>
 
                                                         <div>
+
                                                             <strong>
                                                                 {
                                                                     farm.name
@@ -1319,18 +1670,29 @@ export default function Dashboard() {
                                                                     farm.location
                                                                 }
                                                             </span>
+
                                                         </div>
+
                                                     </div>
 
+
                                                     <span className="hs-farm-status">
+
                                                         <i />
+
                                                         ACTIVE
+
                                                     </span>
+
                                                 </div>
 
+
                                                 <div className="hs-farm-card-bottom">
+
                                                     <div className="hs-farm-coordinates">
+
                                                         <div>
+
                                                             <span>
                                                                 LATITUDE
                                                             </span>
@@ -1343,9 +1705,12 @@ export default function Dashboard() {
                                                                 ) ||
                                                                     "—"}
                                                             </strong>
+
                                                         </div>
 
+
                                                         <div>
+
                                                             <span>
                                                                 LONGITUDE
                                                             </span>
@@ -1358,8 +1723,11 @@ export default function Dashboard() {
                                                                 ) ||
                                                                     "—"}
                                                             </strong>
+
                                                         </div>
+
                                                     </div>
+
 
                                                     <button
                                                         className="hs-farm-secondary-action"
@@ -1380,22 +1748,30 @@ export default function Dashboard() {
                                                     >
                                                         + Add Animal
                                                     </button>
+
                                                 </div>
+
                                             </article>
                                         )
                                     )}
+
                                 </div>
                             )}
+
                         </section>
                     )}
+
 
                     {/* ============================================================
                         KPI GRID
                        ============================================================ */}
 
                     <section className="hs-kpi-grid">
+
                         <article className="hs-kpi-card">
+
                             <div className="hs-kpi-top">
+
                                 <span className="hs-kpi-label">
                                     REGISTERED ANIMALS
                                 </span>
@@ -1403,6 +1779,7 @@ export default function Dashboard() {
                                 <span className="hs-kpi-symbol">
                                     ◉
                                 </span>
+
                             </div>
 
                             <strong className="hs-kpi-value">
@@ -1412,6 +1789,7 @@ export default function Dashboard() {
                             </strong>
 
                             <div className="hs-kpi-foot">
+
                                 <span className="hs-kpi-neutral">
                                     LIVE INVENTORY
                                 </span>
@@ -1419,11 +1797,16 @@ export default function Dashboard() {
                                 <span>
                                     Animal identities
                                 </span>
+
                             </div>
+
                         </article>
 
+
                         <article className="hs-kpi-card">
+
                             <div className="hs-kpi-top">
+
                                 <span className="hs-kpi-label">
                                     HEALTHY
                                 </span>
@@ -1431,6 +1814,7 @@ export default function Dashboard() {
                                 <span className="hs-kpi-symbol healthy">
                                     ✓
                                 </span>
+
                             </div>
 
                             <strong className="hs-kpi-value">
@@ -1440,6 +1824,7 @@ export default function Dashboard() {
                             </strong>
 
                             <div className="hs-kpi-foot">
+
                                 <span className="hs-kpi-positive">
                                     {healthyPercentage}%
                                 </span>
@@ -1447,8 +1832,11 @@ export default function Dashboard() {
                                 <span>
                                     Within thresholds
                                 </span>
+
                             </div>
+
                         </article>
+
 
                         <article
                             className={`hs-kpi-card ${
@@ -1457,7 +1845,9 @@ export default function Dashboard() {
                                     : ""
                             }`}
                         >
+
                             <div className="hs-kpi-top">
+
                                 <span className="hs-kpi-label">
                                     NEEDS ATTENTION
                                 </span>
@@ -1465,6 +1855,7 @@ export default function Dashboard() {
                                 <span className="hs-kpi-symbol warning">
                                     !
                                 </span>
+
                             </div>
 
                             <strong className="hs-kpi-value">
@@ -1474,6 +1865,7 @@ export default function Dashboard() {
                             </strong>
 
                             <div className="hs-kpi-foot">
+
                                 <span className="hs-kpi-warning">
                                     {warningAnimals}{" "}
                                     warning
@@ -1483,8 +1875,11 @@ export default function Dashboard() {
                                     {criticalAnimals}{" "}
                                     critical
                                 </span>
+
                             </div>
+
                         </article>
+
 
                         <article
                             className={`hs-kpi-card ${
@@ -1494,7 +1889,9 @@ export default function Dashboard() {
                                     : ""
                             }`}
                         >
+
                             <div className="hs-kpi-top">
+
                                 <span className="hs-kpi-label">
                                     UNRESOLVED ALERTS
                                 </span>
@@ -1502,6 +1899,7 @@ export default function Dashboard() {
                                 <span className="hs-kpi-symbol critical">
                                     !
                                 </span>
+
                             </div>
 
                             <strong className="hs-kpi-value">
@@ -1511,6 +1909,7 @@ export default function Dashboard() {
                             </strong>
 
                             <div className="hs-kpi-foot">
+
                                 <span
                                     className={
                                         criticalAlerts.length >
@@ -1528,18 +1927,26 @@ export default function Dashboard() {
                                 <span>
                                     Active alerts
                                 </span>
+
                             </div>
+
                         </article>
+
                     </section>
+
 
                     {/* ============================================================
                         HEALTH + ENVIRONMENT
                        ============================================================ */}
 
                     <section className="hs-dashboard-grid">
+
                         <article className="hs-panel hs-health-panel">
+
                             <div className="hs-panel-header">
+
                                 <div>
+
                                     <span className="hs-section-kicker">
                                         HERD HEALTH
                                     </span>
@@ -1548,15 +1955,20 @@ export default function Dashboard() {
                                         Current health
                                         distribution
                                     </h2>
+
                                 </div>
 
                                 <span className="hs-panel-live">
                                     LIVE
                                 </span>
+
                             </div>
 
+
                             <div className="hs-health-content">
+
                                 <div className="hs-health-ring-wrap">
+
                                     <div
                                         className="hs-health-ring"
                                         style={{
@@ -1564,7 +1976,9 @@ export default function Dashboard() {
                                                 ringBackground,
                                         }}
                                     >
+
                                         <div className="hs-health-ring-inner">
+
                                             <strong>
                                                 {
                                                     healthyPercentage
@@ -1575,15 +1989,22 @@ export default function Dashboard() {
                                             <span>
                                                 healthy
                                             </span>
+
                                         </div>
+
                                     </div>
+
                                 </div>
 
+
                                 <div className="hs-health-legend">
+
                                     <div className="hs-health-legend-row">
+
                                         <span className="hs-legend-dot healthy" />
 
                                         <div>
+
                                             <strong>
                                                 {
                                                     healthyAnimals
@@ -1593,6 +2014,7 @@ export default function Dashboard() {
                                             <span>
                                                 Healthy
                                             </span>
+
                                         </div>
 
                                         <b>
@@ -1601,12 +2023,16 @@ export default function Dashboard() {
                                             }
                                             %
                                         </b>
+
                                     </div>
 
+
                                     <div className="hs-health-legend-row">
+
                                         <span className="hs-legend-dot warning" />
 
                                         <div>
+
                                             <strong>
                                                 {
                                                     warningAnimals
@@ -1616,6 +2042,7 @@ export default function Dashboard() {
                                             <span>
                                                 Warning
                                             </span>
+
                                         </div>
 
                                         <b>
@@ -1624,12 +2051,16 @@ export default function Dashboard() {
                                             }
                                             %
                                         </b>
+
                                     </div>
 
+
                                     <div className="hs-health-legend-row">
+
                                         <span className="hs-legend-dot critical" />
 
                                         <div>
+
                                             <strong>
                                                 {
                                                     criticalAnimals
@@ -1639,6 +2070,7 @@ export default function Dashboard() {
                                             <span>
                                                 Critical
                                             </span>
+
                                         </div>
 
                                         <b>
@@ -1647,14 +2079,22 @@ export default function Dashboard() {
                                             }
                                             %
                                         </b>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </article>
 
+
                         <article className="hs-panel hs-environment-panel">
+
                             <div className="hs-panel-header">
+
                                 <div>
+
                                     <span className="hs-section-kicker">
                                         ENVIRONMENTAL
                                         SIGNAL
@@ -1664,7 +2104,9 @@ export default function Dashboard() {
                                         Average
                                         temperature
                                     </h2>
+
                                 </div>
+
 
                                 <span
                                     className={`hs-panel-live ${
@@ -1679,9 +2121,12 @@ export default function Dashboard() {
                                 >
                                     {temperatureStatus}
                                 </span>
+
                             </div>
 
+
                             <div className="hs-temperature-display">
+
                                 <strong>
                                     {averageTemperature !==
                                     null
@@ -1694,10 +2139,14 @@ export default function Dashboard() {
                                 <span>
                                     °C
                                 </span>
+
                             </div>
 
+
                             <div className="hs-temperature-scale">
+
                                 <div className="hs-temperature-track">
+
                                     <div className="hs-temperature-normal" />
 
                                     <div className="hs-temperature-warning" />
@@ -1710,9 +2159,12 @@ export default function Dashboard() {
                                             left: `${temperaturePosition}%`,
                                         }}
                                     />
+
                                 </div>
 
+
                                 <div className="hs-temperature-labels">
+
                                     <span>
                                         35°C
                                     </span>
@@ -1724,10 +2176,14 @@ export default function Dashboard() {
                                     <span>
                                         43°C
                                     </span>
+
                                 </div>
+
                             </div>
 
+
                             <div className="hs-environment-footer">
+
                                 <span>
                                     Aggregated across
                                     monitored animals
@@ -1739,9 +2195,13 @@ export default function Dashboard() {
                                     }{" "}
                                     animals
                                 </strong>
+
                             </div>
+
                         </article>
+
                     </section>
+
 
                     {/* ============================================================
                         GPS MAP
@@ -1753,8 +2213,11 @@ export default function Dashboard() {
                             mapSectionRef
                         }
                     >
+
                         <div className="hs-panel-header">
+
                             <div>
+
                                 <span className="hs-section-kicker">
                                     LIVE GPS MONITORING
                                 </span>
@@ -1762,9 +2225,12 @@ export default function Dashboard() {
                                 <h2>
                                     Animal locations
                                 </h2>
+
                             </div>
 
+
                             <div className="hs-map-header-meta">
+
                                 <span className="hs-map-count">
                                     {
                                         mapAnimals.length
@@ -1783,10 +2249,14 @@ export default function Dashboard() {
                                         ? "LIVE"
                                         : "STANDBY"}
                                 </span>
+
                             </div>
+
                         </div>
 
+
                         <div className="hs-map-container">
+
                             {mapAnimals.length >
                             0 ? (
                                 <MapView
@@ -1796,6 +2266,7 @@ export default function Dashboard() {
                                 />
                             ) : (
                                 <div className="hs-map-empty">
+
                                     <div className="hs-map-empty-icon">
                                         ◎
                                     </div>
@@ -1811,18 +2282,25 @@ export default function Dashboard() {
                                         telemetry will
                                         appear here.
                                     </span>
+
                                 </div>
                             )}
+
                         </div>
+
                     </section>
+
 
                     {/* ============================================================
                         LIVE TELEMETRY
                        ============================================================ */}
 
                     <section className="hs-panel hs-telemetry-panel">
+
                         <div className="hs-panel-header">
+
                             <div>
+
                                 <span className="hs-section-kicker">
                                     TELEMETRY
                                 </span>
@@ -1830,6 +2308,7 @@ export default function Dashboard() {
                                 <h2>
                                     Live animal signals
                                 </h2>
+
                             </div>
 
                             <span className="hs-panel-live">
@@ -1837,12 +2316,18 @@ export default function Dashboard() {
                                     ? "STREAMING"
                                     : "POLLING"}
                             </span>
+
                         </div>
 
+
                         <div className="hs-table-wrapper">
+
                             <table className="hs-telemetry-table">
+
                                 <thead>
+
                                     <tr>
+
                                         <th>
                                             ANIMAL
                                         </th>
@@ -1870,20 +2355,27 @@ export default function Dashboard() {
                                         <th>
                                             LAST UPDATE
                                         </th>
+
                                     </tr>
+
                                 </thead>
 
+
                                 <tbody>
+
                                     {animalRows.length ===
                                     0 ? (
                                         <tr>
+
                                             <td
                                                 colSpan={
                                                     7
                                                 }
                                                 className="hs-table-empty"
                                             >
+
                                                 <div>
+
                                                     <strong>
                                                         {loading
                                                             ? "Loading animal telemetry"
@@ -1899,8 +2391,11 @@ export default function Dashboard() {
                                                             ? "Register a farm and add animals to begin monitoring."
                                                             : "Registered animals will appear here when telemetry is available."}
                                                     </span>
+
                                                 </div>
+
                                             </td>
+
                                         </tr>
                                     ) : (
                                         animalRows.map(
@@ -1912,7 +2407,9 @@ export default function Dashboard() {
                                                         row.id
                                                     }
                                                 >
+
                                                     <td>
+
                                                         <button
                                                             className="hs-animal-cell-button"
                                                             type="button"
@@ -1922,6 +2419,7 @@ export default function Dashboard() {
                                                                 )
                                                             }
                                                         >
+
                                                             <span className="hs-animal-avatar">
                                                                 {getInitials(
                                                                     row.name
@@ -1929,6 +2427,7 @@ export default function Dashboard() {
                                                             </span>
 
                                                             <span className="hs-animal-cell">
+
                                                                 <strong>
                                                                     {
                                                                         row.name
@@ -1941,11 +2440,16 @@ export default function Dashboard() {
                                                                         row.id
                                                                     }
                                                                 </small>
+
                                                             </span>
+
                                                         </button>
+
                                                     </td>
 
+
                                                     <td>
+
                                                         <span
                                                             className={`hs-health-badge ${row.health}`}
                                                         >
@@ -1953,9 +2457,12 @@ export default function Dashboard() {
 
                                                             {row.health}
                                                         </span>
+
                                                     </td>
 
+
                                                     <td>
+
                                                         <span className="hs-table-value">
                                                             {row.temperature !==
                                                             null
@@ -1964,28 +2471,38 @@ export default function Dashboard() {
                                                                   )}°C`
                                                                 : "—"}
                                                         </span>
+
                                                     </td>
 
+
                                                     <td>
+
                                                         {row.heartRate !==
                                                         null
                                                             ? `${Math.round(
                                                                   row.heartRate
                                                               )} bpm`
                                                             : "—"}
+
                                                     </td>
 
+
                                                     <td>
+
                                                         {row.activity !==
                                                         null
                                                             ? Math.round(
                                                                   row.activity
                                                               )
                                                             : "—"}
+
                                                     </td>
 
+
                                                     <td>
+
                                                         <div className="hs-battery-cell">
+
                                                             <span>
                                                                 {row.battery !==
                                                                 null
@@ -1995,9 +2512,11 @@ export default function Dashboard() {
                                                                     : "—"}
                                                             </span>
 
+
                                                             {row.battery !==
                                                                 null && (
                                                                 <div className="hs-battery-bar">
+
                                                                     <i
                                                                         style={{
                                                                             width: `${Math.min(
@@ -2009,32 +2528,47 @@ export default function Dashboard() {
                                                                             )}%`,
                                                                         }}
                                                                     />
+
                                                                 </div>
                                                             )}
+
                                                         </div>
+
                                                     </td>
 
+
                                                     <td className="hs-table-time">
+
                                                         {formatDate(
                                                             row.timestamp
                                                         )}
+
                                                     </td>
+
                                                 </tr>
                                             )
                                         )
                                     )}
+
                                 </tbody>
+
                             </table>
+
                         </div>
+
                     </section>
+
 
                     {/* ============================================================
                         ALERT CENTER
                        ============================================================ */}
 
                     <section className="hs-panel hs-alert-panel">
+
                         <div className="hs-panel-header">
+
                             <div>
+
                                 <span className="hs-section-kicker">
                                     ALERT CENTER
                                 </span>
@@ -2042,7 +2576,9 @@ export default function Dashboard() {
                                 <h2>
                                     Operational attention
                                 </h2>
+
                             </div>
+
 
                             <button
                                 className="hs-panel-link"
@@ -2054,19 +2590,26 @@ export default function Dashboard() {
                                 }
                             >
                                 View all alerts
-                                <span>→</span>
+                                <span>
+                                    →
+                                </span>
                             </button>
+
                         </div>
 
+
                         <div className="hs-alert-list">
+
                             {unresolvedAlerts.length ===
                             0 ? (
                                 <div className="hs-alert-empty">
+
                                     <span className="hs-alert-empty-icon">
                                         ✓
                                     </span>
 
                                     <div>
+
                                         <strong>
                                             No unresolved
                                             alerts
@@ -2079,7 +2622,9 @@ export default function Dashboard() {
                                             within the
                                             alert workflow.
                                         </span>
+
                                     </div>
+
                                 </div>
                             ) : (
                                 unresolvedAlerts
@@ -2122,11 +2667,14 @@ export default function Dashboard() {
                                                         `${animalId}-${index}`
                                                     }
                                                 >
+
                                                     <span
                                                         className={`hs-alert-severity ${severity}`}
                                                     />
 
+
                                                     <div className="hs-alert-main">
+
                                                         <strong>
                                                             {
                                                                 title
@@ -2142,29 +2690,39 @@ export default function Dashboard() {
                                                                 ? `Animal #${animalId}`
                                                                 : "System alert"}
                                                         </span>
+
                                                     </div>
 
+
                                                     <span className="hs-alert-time">
+
                                                         {formatDate(
                                                             alert?.created_at ||
                                                                 alert?.timestamp ||
                                                                 alert?.updated_at
                                                         )}
+
                                                     </span>
+
                                                 </div>
                                             );
                                         }
                                     )
                             )}
+
                         </div>
+
                     </section>
+
                 </main>
+
 
                 {/* ================================================================
                     FOOTER
                    ================================================================ */}
 
                 <footer className="hs-dashboard-footer">
+
                     <span>
                         HERDSENSE AI
                     </span>
@@ -2175,6 +2733,7 @@ export default function Dashboard() {
                     </span>
 
                     <span>
+
                         <i
                             className={`hs-footer-status ${
                                 apiOnline
@@ -2187,9 +2746,13 @@ export default function Dashboard() {
                         {apiOnline
                             ? "operational"
                             : "offline"}
+
                     </span>
+
                 </footer>
+
             </div>
+
         </AppShell>
     );
 }
