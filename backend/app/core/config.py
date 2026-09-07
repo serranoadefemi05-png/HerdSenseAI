@@ -34,6 +34,35 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
     # =========================================================================
+    # EMAIL VERIFICATION
+    # =========================================================================
+    #
+    # SECURITY DEFAULT:
+    #
+    # Verification is enabled by default.
+    #
+    # TEMPORARY DEPLOYMENT:
+    #
+    # Set the Render environment variable:
+    #
+    # REQUIRE_EMAIL_VERIFICATION=false
+    #
+    # This temporarily allows users to register and log in without
+    # email verification.
+    #
+    # WHEN THE EMAIL SYSTEM IS READY:
+    #
+    # Set:
+    #
+    # REQUIRE_EMAIL_VERIFICATION=true
+    #
+    # and redeploy.
+    #
+    # =========================================================================
+
+    REQUIRE_EMAIL_VERIFICATION: bool = True
+
+    # =========================================================================
     # FRONTEND
     # =========================================================================
 
@@ -61,10 +90,7 @@ class Settings(BaseSettings):
     # BREVO_API_KEY=<Brevo API key>
     # BREVO_FROM_EMAIL=herdsenseai@gmail.com
     #
-    # The API key must NEVER be hard-coded in this file.
-    #
-    # Brevo API endpoint:
-    # https://api.brevo.com/v3/smtp/email
+    # NEVER hard-code the API key in this file.
     #
     # =========================================================================
 

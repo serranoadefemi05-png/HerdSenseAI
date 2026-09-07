@@ -298,8 +298,21 @@ def register(
     """
     Register a new farmer account.
 
-    New accounts remain unverified until the email verification
-    link is successfully used.
+    Email verification is controlled by:
+
+        settings.REQUIRE_EMAIL_VERIFICATION
+
+    When enabled:
+
+        - New users are created as unverified.
+        - A verification email is sent.
+        - Login requires email verification.
+
+    When disabled:
+
+        - New users are automatically marked verified.
+        - No verification email is sent.
+        - Login is allowed immediately.
     """
 
     email = (
@@ -360,7 +373,23 @@ def register(
         )
 
     # -------------------------------------------------------------------------
+    # DETERMINE VERIFICATION REQUIREMENT
+    # -------------------------------------------------------------------------
+
+    verification_required = (
+        settings.REQUIRE_EMAIL_VERIFICATION
+    )
+
+    # -------------------------------------------------------------------------
     # CREATE USER
+    # -------------------------------------------------------------------------
+    #
+    # If verification is temporarily disabled, the account is immediately
+    # marked verified.
+    #
+    # If verification is enabled, the account remains unverified until the
+    # verification link is used.
+    #
     # -------------------------------------------------------------------------
 
     new_user = User(
@@ -370,7 +399,7 @@ def register(
             user.password
         ),
         role="farmer",
-        email_verified=False,
+        email_verified=not verification_required,
     )
 
     db.add(new_user)
@@ -394,57 +423,70 @@ def register(
             detail="Unable to create account.",
         )
 
-    # -------------------------------------------------------------------------
-    # SEND VERIFICATION EMAIL
-    # -------------------------------------------------------------------------
+    # =========================================================================
+    # VERIFICATION ENABLED
+    # =========================================================================
 
-    try:
+    if verification_required:
 
-        verification_token = (
-            create_verification_token(
-                new_user.email
+        try:
+
+            verification_token = (
+                create_verification_token(
+                    new_user.email
+                )
             )
-        )
 
-        # IMPORTANT:
-        # Login.jsx reads ?token=...
-        verification_url = (
-            f"{settings.FRONTEND_URL}"
-            f"/login?token={verification_token}"
-        )
+            # IMPORTANT:
+            # Login.jsx reads ?token=...
+            verification_url = (
+                f"{settings.FRONTEND_URL}"
+                f"/login?token={verification_token}"
+            )
 
-        send_verification_email(
-            recipient=new_user.email,
-            full_name=new_user.full_name,
-            verification_url=verification_url,
-        )
+            send_verification_email(
+                recipient=new_user.email,
+                full_name=new_user.full_name,
+                verification_url=verification_url,
+            )
+
+            print(
+                f"📧 HerdSense AI: "
+                f"Verification email sent to {new_user.email}"
+            )
+
+        except Exception as exc:
+
+            # The account remains in the database so the resend flow can
+            # be used once the email provider is ready.
+            #
+            # Registration intentionally reports failure because verification
+            # is currently required.
+
+            print(
+                "❌ HerdSense AI verification email error:",
+                repr(exc),
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Your account was created, but we could not send the "
+                    "verification email. Please try resending the verification "
+                    "email shortly."
+                ),
+            )
+
+    # =========================================================================
+    # VERIFICATION TEMPORARILY DISABLED
+    # =========================================================================
+
+    else:
 
         print(
-            f"📧 HerdSense AI: "
-            f"Verification email sent to {new_user.email}"
-        )
-
-    except Exception as exc:
-
-        # The account has already been created.
-        # Keep it so the farmer can use the resend-verification
-        # flow after the email service is fixed.
-        #
-        # However, registration must NOT report success when
-        # the required verification email could not be delivered.
-
-        print(
-            "❌ HerdSense AI verification email error:",
-            repr(exc),
-        )
-
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Your account was created, but we could not send the "
-                "verification email. Please try resending the verification "
-                "email shortly."
-            ),
+            f"✅ HerdSense AI: "
+            f"Email verification temporarily disabled. "
+            f"Account activated for {new_user.email}"
         )
 
     return new_user
@@ -462,6 +504,9 @@ def verify_email(
 ):
     """
     Verify a user's email address using the signed verification token.
+
+    This endpoint remains active even when verification enforcement
+    is temporarily disabled.
     """
 
     try:
@@ -567,8 +612,26 @@ def resend_verification(
     """
     Resend an email verification link.
 
-    The response deliberately does not reveal whether an account exists.
+    When verification is disabled, no email provider request is made.
+    The endpoint remains available for future activation.
     """
+
+    # =========================================================================
+    # VERIFICATION CURRENTLY DISABLED
+    # =========================================================================
+
+    if not settings.REQUIRE_EMAIL_VERIFICATION:
+
+        return {
+            "message": (
+                "Email verification is currently disabled. "
+                "Your account does not require verification."
+            )
+        }
+
+    # =========================================================================
+    # NORMAL VERIFICATION MODE
+    # =========================================================================
 
     normalized_email = (
         str(payload.email)
@@ -640,6 +703,10 @@ def login(
 ):
     """
     Authenticate a user and return a JWT access token.
+
+    Email verification enforcement is controlled by:
+
+        settings.REQUIRE_EMAIL_VERIFICATION
     """
 
     email = (
@@ -777,8 +844,21 @@ def login(
     # =========================================================================
     # EMAIL VERIFICATION CHECK
     # =========================================================================
+    #
+    # Verification is ONLY enforced when the feature flag is true.
+    #
+    # When:
+    #
+    # REQUIRE_EMAIL_VERIFICATION=false
+    #
+    # this check is skipped.
+    #
+    # =========================================================================
 
-    if not user.email_verified:
+    if (
+        settings.REQUIRE_EMAIL_VERIFICATION
+        and not user.email_verified
+    ):
 
         raise HTTPException(
             status_code=403,
