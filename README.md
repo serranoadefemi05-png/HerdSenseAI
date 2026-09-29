@@ -2,86 +2,90 @@
 
 ## The intelligence layer for livestock
 
-HerdSense AI is an AI + IoT livestock intelligence platform designed to connect animal health, sensor data, telemetry, analytics, and farmer decision-making into a single intelligent operating layer.
+HerdSense AI is an AI + IoT livestock intelligence platform designed to connect livestock data, sensor telemetry, analytics, and farmer decision-making into a single intelligent layer.
 
-The platform is built around a simple principle:
+Our mission is simple:
 
 > Turn raw livestock data into actionable intelligence.
 
-HerdSense AI is being developed to help livestock owners and operators gain better visibility into herd health, behaviour, environmental conditions, and operational performance through connected data and intelligent analysis.
+HerdSense AI is being built to help livestock owners and operators gain better visibility into herd health, behaviour, environmental conditions, and operational performance through connected data and intelligent analysis.
 
 ---
 
-## Overview
+## Why HerdSense AI matters
 
-Livestock operations generate a large amount of valuable data, yet much of it remains fragmented, manual, or difficult to interpret in real time. Information such as temperature, location, movement, feeding patterns, environmental conditions, historical records, and behavioural signals can be highly useful, but only when they are collected, correlated, and analysed effectively.
+Livestock operations generate large amounts of valuable data every day, yet much of it remains fragmented, manual, or difficult to interpret in real time.
 
-HerdSense AI is being built to provide that missing intelligence layer.
+Critical signals such as:
 
-### Key focus areas
+- Temperature
+- Location and movement
+- Feeding and intake behaviour
+- Environmental conditions
+- Telemetry and device data
+- Historical livestock trends
+- Behavioural anomalies
+- Health-related risk indicators
 
-- Temperature and health-related signals
-- Animal movement and behavioural monitoring
-- Feeding and intake intelligence
-- Location and telemetry analysis
-- Environmental condition awareness
-- Historical trend analysis
-- Anomaly detection and alerts
-- Decision support for farmers and livestock operators
+often exist across disconnected systems and are not always available when needed.
+
+HerdSense AI is being developed to unify these signals into a more practical and timely intelligence layer for livestock decision-making.
 
 ---
 
-## The problem
+## The problem we are solving
 
-Traditional livestock monitoring often relies on fragmented systems, manual observation, delayed reporting, and disconnected data sources. This creates an information gap between what is happening on the farm and when the farmer becomes aware of it.
+Traditional livestock monitoring can make it difficult for farmers and operators to maintain consistent visibility across individual animals and larger herds.
 
-Common challenges include:
+Important information may be:
 
-- Data collected manually or inconsistently
-- Information stored in separate systems
-- Reports available only at intervals rather than in real time
-- Difficulty interpreting isolated signals
-- Limited visibility across the herd
-- Problems detected only after they become visible or severe
+- Collected manually
+- Stored in different places
+- Available only periodically
+- Difficult to interpret
+- Hard to correlate across multiple signals
+- Detected only after visible issues appear
 
-HerdSense AI aims to reduce this gap by turning connected livestock signals into timely, understandable insight.
+This creates an information gap between what is happening on the farm and when the farmer becomes aware of it.
+
+HerdSense AI aims to reduce this gap by transforming connected livestock data into meaningful insights and timely actions.
 
 ---
 
 ## Our approach
 
-The platform is designed around a continuous intelligence pipeline:
+HerdSense AI is designed around a continuous intelligence pipeline that moves from raw data to informed action.
 
 ```text
 LIVESTOCK
    │
    ▼
-Sensors & Hardware
+SENSORS & HARDWARE
    │
    ▼
-Data & Telemetry
+DATA & TELEMETRY
    │
    ▼
-Data Processing
+DATA PROCESSING
    │
    ▼
-AI & Analytics
+AI & ANALYTICS
    │
-   ├─────────────────────┬─────────────────────┐
-   │                     │                     │
-   ▼                     ▼                     ▼
-Anomaly Detection     Risk Signals       Pattern Analysis
-   │                     │                     │
-   └─────────────────────┴─────────────────────┘
-                         │
-                         ▼
-                  Alerts & Insights
-                         │
-                         ▼
-                Farmer Decision-Making
+   ├───────────────┬───────────────┐
+   │               │               │
+   ▼               ▼               ▼
+ANOMALY DETECTION  RISK SIGNALS   PATTERN ANALYSIS
+   │               │               │
+   └───────────────┴───────────────┘
+                   │
+                   ▼
+            ALERTS & INSIGHTS
+                   │
+                   ▼
+        FARMER DECISION-MAKING
 ```
 
-The objective is to move from:
+The goal is to move from:
 
 Data → Information → Intelligence → Action
 
@@ -91,21 +95,21 @@ Data → Information → Intelligence → Action
 
 ### Animal health signals
 
-HerdSense AI is designed to incorporate relevant animal health indicators and identify patterns that may require attention. The system is intended to support monitoring and decision-making rather than replace professional veterinary assessment.
+HerdSense AI is intended to incorporate relevant animal health indicators and help identify patterns that may require attention. The platform is designed to support monitoring and decision-making rather than replace professional veterinary assessment.
 
 ### Temperature monitoring
 
-Temperature can provide an important signal when evaluating animal health and environmental conditions. HerdSense AI is designed to incorporate temperature information alongside other available livestock signals.
+Temperature can be an important signal when evaluating animal health and environmental conditions. HerdSense AI is designed to use temperature data alongside other livestock indicators for better context and analysis.
 
 ### Location intelligence
 
-Location and telemetry data can provide visibility into where animals are and how their location changes over time. Potential applications include:
+Location and telemetry data can provide visibility into where animals are and how their movement changes over time. Potential applications include:
 
-- Animal location monitoring
-- Movement tracking
-- Geographical activity patterns
-- Identification of unusual location behaviour
-- Historical location analysis
+- Animal location tracking
+- Movement monitoring
+- Geographic activity analysis
+- Unusual location behaviour detection
+- Historical position analysis
 
 ### Movement and activity
 
@@ -113,19 +117,19 @@ Changes in movement and activity can provide useful behavioural signals. HerdSen
 
 ### Feeding and intake signals
 
-Feeding behaviour and intake-related information can contribute to understanding livestock activity and productivity. Where appropriate data is available, HerdSense AI can incorporate feeding-related signals into a broader intelligence model.
+Feeding behaviour and intake data can contribute to a clearer understanding of livestock activity and productivity. Where appropriate data is available, HerdSense AI can incorporate feeding indicators into a broader intelligence model.
 
 ### Environmental conditions
 
-Livestock health and behaviour can be affected by environmental conditions. HerdSense AI is designed to consider environmental data alongside animal-level information where compatible data sources are available.
+Environmental factors such as weather, temperature, humidity, and field conditions can influence livestock health and behaviour. HerdSense AI is designed to consider environmental conditions alongside animal-level information when the data is available and relevant.
 
 ### Telemetry
 
-Connected livestock systems can produce continuous streams of telemetry. HerdSense AI is designed around the ability to transform telemetry into structured information that can be analysed and used for decision support.
+Connected livestock systems can produce continuous streams of telemetry. HerdSense AI is designed to transform telemetry into structured information that can be analysed and used for practical decision support.
 
 ### Anomaly detection
 
-One of the core ideas behind HerdSense AI is the identification of unusual patterns. Instead of relying exclusively on individual readings, the platform can consider changes across multiple signals.
+One of the core ideas behind HerdSense AI is the identification of unusual behaviour and patterns. Instead of depending only on single readings, the platform can consider changes across multiple signals.
 
 ```text
 Normal Activity
@@ -151,24 +155,24 @@ Activity Changes
        Farmer Attention
 ```
 
-An anomaly does not automatically mean that an animal is sick. It represents a signal that may warrant further investigation.
+An anomaly does not automatically mean an animal is sick. It is a signal that may warrant further investigation.
 
 ### Alerts and notifications
 
-The platform is designed to transform important data patterns into actionable alerts. Potential alert categories include:
+The platform is designed to transform meaningful data patterns into actionable alerts. Potential alert categories include:
 
 - Unusual activity
-- Significant behavioural changes
-- Abnormal temperature signals
+- Significant behavioural shifts
+- Abnormal temperature readings
 - Unexpected location changes
 - Potential health-related anomalies
 - Environmental conditions requiring attention
 
-The goal is to reduce the amount of raw data a farmer has to manually interpret.
+The objective is to reduce the amount of raw data a farmer has to interpret manually.
 
 ### Historical livestock intelligence
 
-Historical data can provide context that a single reading cannot. HerdSense AI is designed to support historical livestock information so that changes can be considered over time.
+Historical data can provide context that a single reading cannot. HerdSense AI is designed to support historical livestock intelligence so that present conditions can be evaluated against past behaviour and trends.
 
 ```text
 Current Signal
@@ -182,7 +186,7 @@ Other Available Signals
 Intelligence
 ```
 
-This provides a foundation for identifying trends and behavioural changes.
+This supports trend analysis, behavioural comparison, and more informed decision-making over time.
 
 ---
 
@@ -192,31 +196,31 @@ HerdSense AI is envisioned as a layered livestock intelligence infrastructure.
 
 ```text
 ┌──────────────────────────────────────┐
-│          FARMER / OPERATOR           │
+│            FARMER / OPERATOR         │
 └──────────────────┬───────────────────┘
                    │
                    ▼
 ┌──────────────────────────────────────┐
-│         HERDSENSE AI LAYER           │
-│   AI • Analytics • Alerts • Insights │
+│          HERDSENSE AI LAYER          │
+│  AI • Analytics • Alerts • Insights  │
 └──────────────────┬───────────────────┘
                    │
                    ▼
 ┌──────────────────────────────────────┐
-│          DATA & TELEMETRY            │
-│  Location • Activity • Temperature   │
-│ Feeding • Environment • History      │
+│          DATA & TELEMETRY           │
+│ Location • Activity • Temperature   │
+│ Feeding • Environment • History     │
 └──────────────────┬───────────────────┘
                    │
                    ▼
 ┌──────────────────────────────────────┐
-│        CONNECTED HARDWARE            │
-│   Sensors • Trackers • IoT Devices   │
+│       CONNECTED HARDWARE            │
+│  Sensors • Trackers • IoT Devices   │
 └──────────────────┬───────────────────┘
                    │
                    ▼
 ┌──────────────────────────────────────┐
-│             LIVESTOCK                │
+│             LIVESTOCK               │
 └──────────────────────────────────────┘
 ```
 
@@ -234,27 +238,26 @@ HerdSense AI sits at the intersection of:
 - Livestock Technology
 - Decentralized Infrastructure
 
-The exact technical implementation is expected to evolve as the platform moves through development, testing, hardware integration, and deployment.
+The exact technical implementation will evolve as the platform moves through design, testing, hardware integration, and deployment.
 
 ---
 
 ## Product vision
 
-The HerdSense AI product direction includes an intelligent interface through which livestock data can be monitored and interpreted.
+The HerdSense AI product direction includes an intelligent interface through which livestock data can be monitored, interpreted, and acted upon.
 
 The broader product experience is intended to provide visibility into:
 
-- Livestock
+- Livestock conditions
 - Animal health signals
-- Activity
-- Location
+- Activity and movement
+- Location and tracking
 - Environmental conditions
-- Telemetry
+- Telemetry and live data
 - Historical data
-- Anomalies
-- Potential risks
-- Alerts
-- Intelligence generated from available data
+- Anomalies and risk patterns
+- Alerts and insight generation
+- Intelligence derived from available data
 
 ---
 
@@ -267,21 +270,21 @@ The broader product experience is intended to provide visibility into:
 
 ## Development status
 
-Status: Active Development
+Status: Active development
 
 HerdSense AI is an actively developing project. This repository contains software and product-development work associated with the platform.
 
-The project is being developed progressively across:
+The initiative is being developed progressively across:
 
-- Software
+- Software engineering
 - Artificial intelligence
 - Data infrastructure
-- IoT
+- IoT systems
 - Telemetry
 - Livestock monitoring
 - Hardware development
 
-Some capabilities described in the broader HerdSense AI vision are currently conceptual, experimental, prototype, or roadmap-stage capabilities. They should not be interpreted as deployed production functionality unless explicitly identified as such.
+Some capabilities described in the broader HerdSense AI vision are currently conceptual, experimental, prototype, or roadmap-stage features. They should not be interpreted as deployed production functionality unless explicitly identified as such.
 
 ---
 
@@ -424,7 +427,7 @@ We believe that real-world intelligence begins with real-world data.
 
 A sensor reading by itself is only data. A collection of readings creates information. Connecting those signals and understanding their relationships creates intelligence.
 
-HerdSense AI is being built around that progression:
+HerdSense AI is built around that progression:
 
 ```text
 DATA
@@ -442,25 +445,25 @@ ACTION
 
 ## Why AI + IoT?
 
-AI can provide analytical intelligence. IoT can provide real-world data. Livestock provides the real-world environment where both can interact.
+AI provides analytical intelligence, while IoT provides access to real-world data. Livestock provides the environment where both can interact.
 
 Together:
 
 ```text
 IoT
- ↓
+  ↓
 Real-world signals
- ↓
+  ↓
 Data
- ↓
+  ↓
 AI
- ↓
+  ↓
 Analysis
- ↓
+  ↓
 Intelligence
- ↓
+  ↓
 Farmer
- ↓
+  ↓
 Action
 ```
 
@@ -491,7 +494,7 @@ The technology stack may evolve as development progresses.
 
 ## Contributing
 
-HerdSense AI is currently an actively developing product.
+HerdSense AI is currently in an active product-development phase.
 
 Contribution guidelines will be introduced as the project reaches the appropriate stage for broader community participation.
 
@@ -506,7 +509,7 @@ If you are interested in collaborating around:
 - Software engineering
 - Agricultural technology
 
-you can reach out to the team.
+please reach out to the team.
 
 ---
 
@@ -517,7 +520,7 @@ Co-Founder — Product & Technology
 
 Nigerian technology entrepreneur and Electrical & Electronic Engineering graduate building at the intersection of artificial intelligence, IoT, livestock technology, and decentralized infrastructure.
 
-His motivation for HerdSense AI comes from the information gap faced by livestock farmers who may lack continuous and reliable intelligence about the health, environment, and productivity of individual animals and herds.
+His motivation for HerdSense AI comes from the information gap faced by livestock farmers who may lack continuous and reliable intelligence about the health, environment, and productivity of individual animals and entire herds.
 
 ### Adeleke Ayomide Adebiyi
 Co-Founder — Media, Marketing & Brand Strategy
